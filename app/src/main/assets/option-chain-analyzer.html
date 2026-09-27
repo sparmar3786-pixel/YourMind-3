@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Option Chain Signal Analyzer — NIFTY (rule-based)</title>
+<style>
+:root{--bg:#0b0f14;--panel:#121a23;--panel2:#182230;--panel3:#202d3b;--text:#e8eef5;--muted:#93a1b0;--line:#26323f;--accent:#2dd4bf;--blue:#38bdf8;--green:#22c55e;--red:#f43f5e;--amber:#f59e0b;--purple:#a78bfa;--radius:14px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;font-size:15px;line-height:1.45;padding-bottom:calc(30px + env(safe-area-inset-bottom));-webkit-text-size-adjust:100%}
+header{position:sticky;top:0;z-index:30;background:#0b0f14f2;backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:calc(8px + env(safe-area-inset-top)) 12px 8px}
+header h1{margin:0;font-size:16px;font-weight:700;letter-spacing:.2px}
+header .sub{color:var(--muted);font-size:11px;margin-top:2px}
+nav#tabs{display:flex;gap:8px;overflow-x:auto;padding:8px 12px;position:sticky;top:calc(52px + env(safe-area-inset-top));z-index:29;background:#0b0f14f2;backdrop-filter:blur(8px);border-bottom:1px solid var(--line);scrollbar-width:none}
+nav#tabs::-webkit-scrollbar{display:none}
+button.tab{flex:0 0 auto;min-height:42px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:13.5px;font-weight:600}
+button.tab.active{background:linear-gradient(135deg,var(--accent),#0ea5a3);color:#04221f;border-color:transparent}
+main{padding:12px 12px 40px}
+.page{display:none}
+.page.active{display:block;animation:fade .18s ease}
+@keyframes fade{from{opacity:.4}to{opacity:1}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:13px;margin:0 0 12px}
+.card h2{margin:0 0 8px;font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:7px}
+.card h3{margin:12px 0 6px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+label{display:block;font-size:12px;color:var(--muted);margin:8px 0 3px}
+input,select,textarea{width:100%;min-height:44px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:16px;padding:9px 11px;outline:none}
+textarea{min-height:120px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+button.btn{min-height:48px;width:100%;border:none;border-radius:12px;font-size:15.5px;font-weight:700;background:var(--panel3);color:var(--text);margin-top:10px}
+button.btn:active{transform:scale(.99)}
+button.primary{background:linear-gradient(135deg,var(--accent),#0ea5a3);color:#04221f}
+button.blue{background:linear-gradient(135deg,#38bdf8,#2563eb);color:#04121f}
+button.warn{background:#3a2a12;color:var(--amber);border:1px solid #5c441c}
+button.danger{background:#3a1420;color:var(--red);border:1px solid #5c2130}
+button.sm{min-height:38px;font-size:13px;width:auto;padding:0 12px;border-radius:9px;margin:0}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;margin:2px 4px 2px 0;border:1px solid transparent}
+.pill.ok{background:#0d2b1c;color:var(--green);border-color:#1c5a38}
+.pill.bad{background:#331220;color:var(--red);border-color:#5c2130}
+.pill.warn{background:#33260e;color:var(--amber);border-color:#5c441c}
+.pill.info{background:#0d2433;color:var(--blue);border-color:#1c4a5c}
+.pill.neu{background:#1c2632;color:var(--muted);border-color:var(--line)}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:520px}
+th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--panel2)}
+th{background:var(--panel2);color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase}
+.verdict{border-radius:12px;padding:13px;margin:10px 0;border:1px solid var(--line);background:var(--panel2)}
+.verdict .big{font-size:20px;font-weight:800;letter-spacing:.3px}
+.verdict.buy-ce{background:#062a1e;border-color:#12603c}
+.verdict.buy-pe{background:#2a0d17;border-color:#6b2036}
+.verdict.wait{background:#33260e;border-color:#5c441c}
+.verdict.notrade{background:#241722;border-color:#4a2a44}
+.zone{border:1px dashed var(--line);border-radius:10px;padding:10px;margin:8px 0;background:var(--panel2)}
+.audit-row{border-left:3px solid var(--line);padding:6px 0 6px 10px;margin:6px 0;font-size:12.5px}
+.audit-row.fired{border-color:var(--green)}
+.audit-row.blocked{border-color:var(--red)}
+.audit-row.override{border-color:var(--amber)}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.kv b{font-variant-numeric:tabular-nums}
+footer{padding:16px 14px calc(24px + env(safe-area-inset-bottom));color:var(--muted);font-size:11.5px;border-top:1px solid var(--line);margin-top:10px;line-height:1.5}
+.help p{font-size:13px}
+code{background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:12px}
+hr{border:none;border-top:1px solid var(--line);margin:12px 0}
+.tiny{font-size:11px;color:var(--muted)}
+.stack{display:flex;gap:8px;flex-wrap:wrap}
+.stack>*{flex:1 1 auto}
+.banner{background:#33260e;border:1px solid #5c441c;color:var(--amber);border-radius:10px;padding:9px 11px;font-size:12.5px;margin-bottom:10px}
+.banner.red{background:#2a0d17;border-color:#6b2036;color:#ffb3c6}
+.strike-row{display:grid;grid-template-columns:repeat(9,minmax(64px,1fr));gap:5px;margin-bottom:5px;align-items:center}
+.strike-row input{min-height:40px;font-size:14px;padding:6px}
+.strike-row .hdr{font-size:10.5px;color:var(--muted);text-align:center}
+#strikeHead{display:grid;grid-template-columns:repeat(9,minmax(64px,1fr));gap:5px;margin-bottom:4px}
+#strikeHead div{font-size:10px;color:var(--muted);text-align:center;font-weight:700}
+input[type=checkbox]{width:22px;height:22px;min-height:22px}
+.inline{display:flex;align-items:center;gap:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 Option Chain Signal Analyzer <span class="tiny">— NIFTY</span></h1>
+  <div class="sub">Rule-based, transparent engine · Hinglish-friendly · offline · <span id="hdrSnap">0 snapshot(s)</span></div>
+</header>
+<nav id="tabs">
+  <button class="tab" data-tab="input">📝 Input</button>
+  <button class="tab" data-tab="analyze">🔎 Analyze</button>
+  <button class="tab" data-tab="expiry">⏳ Expiry</button>
+  <button class="tab" data-tab="pl">💰 P/L &amp; Charges</button>
+  <button class="tab" data-tab="risk">🛡️ Risk</button>
+  <button class="tab" data-tab="journal">📒 Journal</button>
+  <button class="tab" data-tab="refs">📐 Refs 1D/1W/1M</button>
+  <button class="tab" data-tab="settings">⚙️ Settings</button>
+  <button class="tab active" data-tab="android">🤖 Android</button>
+  <button class="tab" data-tab="help">❓ Help</button>
+</nav>
+<main>
+
+<!-- ============ INPUT ============ -->
+<section class="page" id="page-input">
+  <div class="card">
+    <h2>1 · Manual snapshot entry</h2>
+    <div class="tiny">Ek snapshot = ek time ka poora chain. A = purana, B = naya. Deltas inhi se banenge.</div>
+    <div class="row">
+      <div><label>Spot (NIFTY)</label><input id="inSpot" type="number" inputmode="decimal" step="0.05" placeholder="e.g. 23080"></div>
+      <div><label>ATM IV %</label><input id="inIv" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 13.5"></div>
+    </div>
+    <div class="row3">
+      <div><label>DTE (days)</label><input id="inDte" type="number" inputmode="numeric" step="1" placeholder="e.g. 3"></div>
+      <div><label>Expiry date</label><input id="inExpiry" type="date"></div>
+      <div><label>Intraday bars</label><input id="inBars" type="number" inputmode="numeric" step="1" value="0"></div>
+    </div>
+    <label>Data timestamp (snapshot ka time)</label>
+    <input id="inTime" type="datetime-local">
+    <h3>Strikes (CE = Call, PE = Put)</h3>
+    <div id="strikeHead"><div>Strike</div><div>CE prem</div><div>CE OI</div><div>CE ΔOI</div><div>CE vol</div><div>PE prem</div><div>PE OI</div><div>PE ΔOI</div><div>PE vol</div></div>
+    <div id="strikeRows"><div class="strike-row"><input type="number" step="any" data-k="strike"><input type="number" step="any" data-k="ceP"><input type="number" step="any" data-k="ceOi"><input type="number" step="any" data-k="ceChg"><input type="number" step="any" data-k="ceVol"><input type="number" step="any" data-k="peP"><input type="number" step="any" data-k="peOi"><input type="number" step="any" data-k="peChg"><input type="number" step="any" data-k="peVol"></div><div class="strike-row"><input type="number" step="any" data-k="strike"><input type="number" step="any" data-k="ceP"><input type="number" step="any" data-k="ceOi"><input type="number" step="any" data-k="ceChg"><input type="number" step="any" data-k="ceVol"><input type="number" step="any" data-k="peP"><input type="number" step="any" data-k="peOi"><input type="number" step="any" data-k="peChg"><input type="number" step="any" data-k="peVol"></div></div>
+    <div class="stack">
+      <button class="btn sm" id="btnAddStrike">+ Add strike</button>
+      <button class="btn sm" id="btnAddAtm">+ ATM ±5</button>
+      <button class="btn sm danger" id="btnClearStrikes">Clear</button>
+    </div>
+    <button class="btn primary" id="btnSaveSnap">💾 Save snapshot</button>
+    <button class="btn warn" id="btnLoadDemo">🧪 Load DEMO pair (clearly fake)</button>
+    <div class="tiny" style="margin-top:6px">DEMO values sirf UI test ke liye hain — real market data nahi.</div>
+  </div>
+
+  <div class="card">
+    <h2>2 · CSV import (NSE option-chain export)</h2>
+    <div class="tiny">Tolerant column mapping. Headers me keywords dhoondhe jaate hain (Call/Put, LTP/Premium, OI, Chg OI, Volume). Timestamp tolerant parser.</div>
+    <label>Paste CSV text</label>
+    <textarea id="csvText" placeholder="Strike,CE LTP,CE OI,CE Chg OI,CE Volume,PE LTP,PE OI,PE Chg OI,PE Volume
+23000,150.2,120000,5000,80000,95.4,150000,-3000,70000"></textarea>
+    <label>or choose file</label>
+    <input id="csvFile" type="file" accept=".csv,text/csv">
+    <button class="btn blue" id="btnParseCsv">📥 Parse &amp; preview</button>
+    <div id="csvPreview"></div>
+  </div>
+
+  <div class="card">
+    <h2>3 · Saved snapshots</h2>
+    <div id="snapList"><div class="muted small">Koi snapshot nahi.</div></div>
+    <button class="btn danger" id="btnClearAll">🗑️ Delete ALL local data</button>
+  </div>
+</section>
+
+<!-- ============ ANALYZE ============ -->
+<section class="page" id="page-analyze">
+  <div class="card">
+    <h2>Snapshot comparison (A → B)</h2>
+    <div class="row">
+      <div><label>Snapshot A (earlier)</label><select id="selA"></select></div>
+      <div><label>Snapshot B (later)</label><select id="selB"></select></div>
+    </div>
+    <label>Evaluate side</label>
+    <select id="selSide"><option value="PE">PE BUY (bearish bet)</option><option value="CE">CE BUY (bullish bet)</option><option value="BOTH">Both (compare)</option></select>
+    <button class="btn primary" id="btnRun">▶️ Run rule engine</button>
+    <div class="tiny" style="margin-top:6px">Engine deterministic hai. Har score apne inputs dikhata hai. Koi black box nahi.</div>
+  </div>
+  <div id="analyzeOut"></div>
+</section>
+
+<!-- ============ EXPIRY ============ -->
+<section class="page" id="page-expiry">
+  <div class="card">
+    <h2>Expiry-day framework</h2>
+    <div class="row3">
+      <div><label>Spot</label><input id="exSpot" type="number" inputmode="decimal" step="0.05"></div>
+      <div><label>DTE</label><input id="exDte" type="number" inputmode="numeric" step="1" value="0"></div>
+      <div><label>Lot size</label><input id="exLot" type="number" inputmode="numeric" step="1"></div>
+    </div>
+    <label>Strike(s) — comma separated</label>
+    <input id="exStrikes" type="text" placeholder="23000,23050,23100">
+    <button class="btn primary" id="btnExpiry">Compute tables</button>
+  </div>
+  <div id="expiryOut"></div>
+</section>
+
+<!-- ============ PL ============ -->
+<section class="page" id="page-pl">
+  <div class="card">
+    <h2>Charges + slippage aware P/L</h2>
+    <div class="row">
+      <div><label>Leg type</label><select id="plSide"><option value="BUY">BUY (long option)</option><option value="SELL">SELL (short / writer)</option></select></div>
+      <div><label>Lots</label><input id="plLots" type="number" inputmode="numeric" step="1" value="1"></div>
+    </div>
+    <div class="row3">
+      <div><label>Entry premium</label><input id="plEntry" type="number" inputmode="decimal" step="0.05"></div>
+      <div><label>Exit premium</label><input id="plExit" type="number" inputmode="decimal" step="0.05"></div>
+      <div><label>Lot size</label><input id="plLot" type="number" inputmode="numeric" step="1"></div>
+    </div>
+    <button class="btn primary" id="btnPl">Compute gross / net / breakeven</button>
+    <div class="tiny" style="margin-top:6px">Charges defaults approximate hain; Settings me sab editable. Slippage per leg bhi configurable.</div>
+  </div>
+  <div id="plOut"></div>
+</section>
+
+<!-- ============ RISK ============ -->
+<section class="page" id="page-risk">
+  <div class="card">
+    <h2>Risk engine (position sizing + R:R gate)</h2>
+    <div class="row">
+      <div><label>Entry</label><input id="rkEntry" type="number" inputmode="decimal" step="0.05"></div>
+      <div><label>Stop-loss</label><input id="rkSl" type="number" inputmode="decimal" step="0.05"></div>
+    </div>
+    <div class="row">
+      <div><label>Target</label><input id="rkTp" type="number" inputmode="decimal" step="0.05"></div>
+      <div><label>Lot size</label><input id="rkLot" type="number" inputmode="numeric" step="1"></div>
+    </div>
+    <button class="btn primary" id="btnRisk">Compute sizing &amp; gate</button>
+  </div>
+  <div id="riskOut"></div>
+</section>
+
+<!-- ============ JOURNAL ============ -->
+<section class="page" id="page-journal">
+  <div class="card">
+    <h2>Signal journal + hit-rate per rule</h2>
+    <div id="journalOut"><div class="muted small">Koi signal log nahi. Analyze tab se log karo.</div></div>
+    <button class="btn danger" id="btnClearJournal">Clear journal</button>
+  </div>
+</section>
+
+<!-- ============ REFS ============ -->
+<section class="page" id="page-refs">
+  <div class="card">
+    <h2>1D / 1W / 1M reference levels</h2>
+    <div class="tiny">Sirf PREVIOUS COMPLETED period use hoti hai. Aaj ka adhura period kabhi mix nahi hota.</div>
+    <div id="refsOut"><div class="card"><div class="kv"><span>Prev day</span><b class="muted">not available</b></div><div class="kv"><span>Prev week</span><b class="muted">not available</b></div><div class="kv"><span>Prev month</span><b class="muted">not available</b></div><div class="tiny" style="margin-top:6px">No snapshot history yet.</div></div></div>
+    <h3>Manual reference entry (optional)</h3>
+    <div class="row3">
+      <div><label>Day H</label><input id="rDayH" type="number" step="0.05"></div>
+      <div><label>Day L</label><input id="rDayL" type="number" step="0.05"></div>
+      <div><label>Day C</label><input id="rDayC" type="number" step="0.05"></div>
+    </div>
+    <div class="row3">
+      <div><label>Week H</label><input id="rWkH" type="number" step="0.05"></div>
+      <div><label>Week L</label><input id="rWkL" type="number" step="0.05"></div>
+      <div><label>Week C</label><input id="rWkC" type="number" step="0.05"></div>
+    </div>
+    <div class="row3">
+      <div><label>Month H</label><input id="rMoH" type="number" step="0.05"></div>
+      <div><label>Month L</label><input id="rMoL" type="number" step="0.05"></div>
+      <div><label>Month C</label><input id="rMoC" type="number" step="0.05"></div>
+    </div>
+    <button class="btn" id="btnSaveRefs">Save manual refs</button>
+  </div>
+</section>
+
+<!-- ============ SETTINGS ============ -->
+<section class="page" id="page-settings">
+  <div class="card">
+    <h2>Contract &amp; data quality</h2>
+    <div class="row">
+      <div><label>Lot size</label><input id="stLot" type="number" step="1"></div>
+      <div><label>Strike step</label><input id="stStep" type="number" step="1"></div>
+    </div>
+    <div class="row">
+      <div><label>Stale after (min, live)</label><input id="stStale" type="number" step="1"></div>
+      <div><label>Hard-cap confidence when stale/no-bars</label><input id="stCap" type="number" step="1"></div>
+    </div>
+    <h3>Confirmation &amp; liquidity</h3>
+    <div class="row3">
+      <div><label>Consecutive deltas N</label><input id="stConf" type="number" step="1"></div>
+      <div><label>Min OI</label><input id="stMinOi" type="number" step="1000"></div>
+      <div><label>Min vol/OI ratio</label><input id="stVolOi" type="number" step="0.01"></div>
+    </div>
+    <h3>Risk</h3>
+    <div class="row3">
+      <div><label>Max loss / trade ₹</label><input id="stMaxLoss" type="number" step="100"></div>
+      <div><label>R:R gate (min)</label><input id="stRr" type="number" step="0.1"></div>
+      <div><label>Margin / lot ₹</label><input id="stMargin" type="number" step="1000"></div>
+    </div>
+    <h3>Charges (approximate — verify with broker)</h3>
+    <div class="row3">
+      <div><label>Brokerage / order ₹</label><input id="stBrok" type="number" step="1"></div>
+      <div><label>STT sell %</label><input id="stStt" type="number" step="0.001"></div>
+      <div><label>Exch txn %</label><input id="stExch" type="number" step="0.001"></div>
+    </div>
+    <div class="row3">
+      <div><label>SEBI %</label><input id="stSebi" type="number" step="0.0001"></div>
+      <div><label>Stamp (buy) %</label><input id="stStamp" type="number" step="0.001"></div>
+      <div><label>GST %</label><input id="stGst" type="number" step="0.1"></div>
+    </div>
+    <div class="row">
+      <div><label>Slippage / leg (points)</label><input id="stSlip" type="number" step="0.05"></div>
+      <div><label>Default ATM IV %</label><input id="stIv" type="number" step="0.1"></div>
+    </div>
+    <h3>Confidence weights (advanced — must sum visibly)</h3>
+    <div class="row3">
+      <div><label>OI concentration</label><input id="wOi" type="number" step="1"></div>
+      <div><label>Premium turn</label><input id="wTurn" type="number" step="1"></div>
+      <div><label>Volume expansion</label><input id="wVol" type="number" step="1"></div>
+    </div>
+    <div class="row3">
+      <div><label>% move</label><input id="wPct" type="number" step="1"></div>
+      <div><label>IV confirm</label><input id="wIv" type="number" step="1"></div>
+      <div><label>Opp-side clear</label><input id="wOpp" type="number" step="1"></div>
+    </div>
+    <div class="row3">
+      <div><label>Liquidity OK</label><input id="wLiq" type="number" step="1"></div>
+      <div><label>Confirmation met</label><input id="wConf" type="number" step="1"></div>
+      <div><label>Expiry adj</label><input id="wExp" type="number" step="1"></div>
+    </div>
+    <button class="btn primary" id="btnSaveSettings">💾 Save settings</button>
+    <button class="btn" id="btnResetSettings">↺ Reset to defaults</button>
+  </div>
+</section>
+
+<!-- ============ ANDROID ============ -->
+<section class="page active" id="page-android">
+  <div class="card">
+    <h2>🤖 Android project (offline WebView app)</h2>
+    <div class="tiny">Yeh ek complete Android Studio project (Kotlin + WebView) generate karta hai, jisme yeh HTML app <code>assets/</code> me bundled hai — APK offline chalega.</div>
+    <button class="btn primary" id="btnZip">⬇️ Download option-chain-analyzer-android.zip</button>
+    <div class="banner" style="margin-top:12px">
+      <b>Note:</b> ZIP client-side banta hai (koi network nahi). <code>gradle/wrapper/gradle-wrapper.jar</code> (binary) include nahi hai — ise ek baar <code>gradle wrapper --gradle-version 8.7</code> se, ya Android Studio sync se generate karein. Details BUILD.md me.
+    </div>
+    <h3>ZIP contents</h3>
+    <div id="zipTree" class="tiny">• <code>settings.gradle</code> <span class="muted">(337 B)</span><br>• <code>build.gradle</code> <span class="muted">(159 B)</span><br>• <code>gradle.properties</code> <span class="muted">(136 B)</span><br>• <code>gradle/wrapper/gradle-wrapper.properties</code> <span class="muted">(250 B)</span><br>• <code>app/build.gradle</code> <span class="muted">(809 B)</span><br>• <code>app/proguard-rules.pro</code> <span class="muted">(141 B)</span><br>• <code>app/src/main/AndroidManifest.xml</code> <span class="muted">(807 B)</span><br>• <code>app/src/main/java/com/youmind/optionchain/MainActivity.kt</code> <span class="muted">(1464 B)</span><br>• <code>app/src/main/res/values/strings.xml</code> <span class="muted">(123 B)</span><br>• <code>app/src/main/res/values/colors.xml</code> <span class="muted">(142 B)</span><br>• <code>app/src/main/res/values/themes.xml</code> <span class="muted">(284 B)</span><br>• <code>app/src/main/res/drawable/ic_launcher_background.xml</code> <span class="muted">(179 B)</span><br>• <code>app/src/main/res/drawable/ic_launcher_foreground.xml</code> <span class="muted">(353 B)</span><br>• <code>app/src/main/res/drawable/ic_launcher.xml</code> <span class="muted">(433 B)</span><br>• <code>app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml</code> <span class="muted">(273 B)</span><br>• <code>app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml</code> <span class="muted">(273 B)</span><br>• <code>app/src/main/res/xml/backup_rules.xml</code> <span class="muted">(129 B)</span><br>• <code>app/src/main/res/xml/data_extraction_rules.xml</code> <span class="muted">(176 B)</span><br>• <code>.gitignore</code> <span class="muted">(103 B)</span><br>• <code>README.md</code> <span class="muted">(303 B)</span><br>• <code>BUILD.md</code> <span class="muted">(2292 B)</span><br>• <code>app/src/main/assets/option-chain-analyzer.html</code> <span class="muted">(88941 B)</span><br><span class="muted">+ gradle/wrapper/gradle-wrapper.jar (generate locally)</span></div>
+  </div>
+  <div class="card">
+    <h2>Build steps (summary)</h2>
+    <p class="small">1) Unzip. 2) Android Studio → Open. 3) First sync downloads Gradle + wrapper. 4) <code>./gradlew assembleDebug</code>. 5) APK: <code>app/build/outputs/apk/debug/app-debug.apk</code>. Play Store ke liye signed release + keystore chahiye.</p>
+  </div>
+</section>
+
+<!-- ============ HELP ============ -->
+<section class="page" id="page-help">
+  <div class="card help">
+    <h2>❓ How to use (Hinglish)</h2>
+    <p><b>Step 1 — Input:</b> Ek time ka chain bharo aur "Save snapshot". Doosre time ka bharo aur phir save. Ab tumhare paas A (purana) aur B (naya) hai.</p>
+    <p><b>Step 2 — Analyze:</b> A aur B choose karo, side (PE BUY / CE BUY) choose karo, "Run rule engine". Engine strikes classify karega, probable seller pressure zone nikalega, opposite-side override check karega, aur ek transparent confidence dega — saare inputs ke saath.</p>
+    <p><b>Zaroori:</b> Engine kabhi "exact seller SL" claim nahi karta — sirf probable zone + confidence + evidence. Intraday bars 0 ya data stale ho to confidence hard-cap ho jaata hai aur STALE/NO-DATA badge dikhta hai.</p>
+    <p><b>Charges:</b> P/L tab me gross, net aur true breakeven dikhta hai. Defaults approximate — broker ke hisaab se Settings me theek karo.</p>
+    <p><b>Journal:</b> Signal ke baad outcome (win/loss/expired) tag karo. Har rule ka hit-rate track hota hai, taaki thresholds calibrate ho sakein.</p>
+  </div>
+  <div class="card help">
+    <h2>Methodology (short)</h2>
+    <p>Premium ↓ + OI ↑ = short buildup · Premium ↑ + OI ↓ = short covering · Premium ↑ + OI ↑ = long buildup · Premium ↓ + OI ↓ = long unwinding.</p>
+    <p>Probable seller pressure zone: jahan premium girte waqt OI concentrate hui, phir premium up + OI down + volume expand hua. Wahi short-covering trigger.</p>
+    <p>Opposite-side override: PE BUY ke liye, agar nearby CE strikes me premium up + OI down + volume expand ho aur spot key CE strike ke upar chala jaaye → PE signal BLOCK/EXIT/REVERSAL-WATCH.</p>
+  </div>
+</section>
+
+</main>
+<footer>
+  <b>⚠️ Risk disclaimer:</b> Yeh ek analysis tool hai, investment advice nahi. Options trading me substantial loss ka risk hai. Seller ke hidden stop-loss ko koi bhi tool exactly nahi jaan sakta — sirf probable zones. Apna khud ka judgement aur risk management use karein. Data manually/CSV se aata hai; accuracy ki zimmedari user ki hai. Demo data clearly fake hai.
+  <br><br>Option Chain Signal Analyzer · offline · v1.0 · engine deterministic &amp; auditable
+</footer>
+
+<script>
+/* =====================================================================
+   Option Chain Signal Analyzer — transparent rule engine
+   Rules R1..R12 (core) + I1..I12 (improvements). See LOGIC.md.
+   No network, no external deps. All state in localStorage.
+   ===================================================================== */
+
+/* ---------- defaults ---------- */
+const DEFAULTS = {
+  lotSize: 65, strikeStep: 50, staleMin: 5, staleCap: 40,
+  confirmN: 2, minOI: 50000, minVolOi: 0.02,
+  maxLoss: 5000, rrGate: 1.5, marginPerLot: 120000,
+  brok: 20, stt: 0.0625, exch: 0.0495, sebi: 0.0001, stamp: 0.003, gst: 18, slip: 0.5,
+  iv: 13.5,
+  w: { oi: 20, turn: 20, vol: 15, pct: 10, iv: 8, opp: 15, liq: 10, conf: 12, exp: 10 },
+  eps: 0.0001
+};
+const LSKEY = 'oca_v1';
+let S = { settings: JSON.parse(JSON.stringify(DEFAULTS)), snapshots: [], journal: [], refs: {} };
+
+function deepClone(o){return JSON.parse(JSON.stringify(o));}
+function load(){
+  try{ const r = localStorage.getItem(LSKEY); if(r){ const p = JSON.parse(r); S.settings = Object.assign(deepClone(DEFAULTS), p.settings||{}); S.settings.w = Object.assign(deepClone(DEFAULTS.w), (p.settings&&p.settings.w)||{}); S.snapshots = p.snapshots||[]; S.journal = p.journal||[]; S.refs = p.refs||{}; } }catch(e){ console.warn('load failed', e); }
+}
+function save(){ try{ localStorage.setItem(LSKEY, JSON.stringify(S)); }catch(e){ alert('Storage full/failed: '+e.message); } }
+
+/* ---------- utils ---------- */
+const $ = id => document.getElementById(id);
+const num = v => { const n = parseFloat(String(v).replace(/[, ]/g,'')); return isFinite(n)?n:0; };
+const fmt = (n,d=2) => (isFinite(n)?Number(n).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d}):'—');
+const pct = (n,d=2) => (isFinite(n)?(n>=0?'+':'')+Number(n).toFixed(d)+'%':'—');
+const clamp = (n,a,b) => Math.max(a, Math.min(b, n));
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function pad(n){ return String(n).padStart(2,'0'); }
+function nowLocalInput(){ const d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes()); }
+function isoLocal(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }
+function parseTs(s){
+  if(s==null||s==='') return null;
+  if(typeof s==='number') return new Date(s);
+  s=String(s).trim();
+  let d=new Date(s); if(!isNaN(d)) return d;
+  let m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m){ let dd=+m[1],mm=+m[2],yy=+m[3]; if(yy<100)yy+=2000; const hh=+(m[4]||0),mi=+(m[5]||0),ss=+(m[6]||0); d=new Date(yy,mm-1,dd,hh,mi,ss); if(!isNaN(d)) return d; }
+  const mon={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  m=s.match(/^(\d{1,2})[\-\s]([A-Za-z]{3,})[\-\s](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m){ const mm=mon[m[2].slice(0,3).toLowerCase()]; if(mm!=null){ let yy=+m[3]; if(yy<100)yy+=2000; d=new Date(yy,mm,+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0)); if(!isNaN(d)) return d; } }
+  return null;
+}
+function ageMinutes(ts){ if(!ts) return null; return (Date.now()-new Date(ts).getTime())/60000; }
+function ageText(mins){ if(mins==null) return '—'; if(mins<60) return Math.round(mins)+'m'; const h=Math.floor(mins/60), m=Math.round(mins%60); return h+'h '+m+'m'; }
+function marketStatus(ts){ if(!ts) return 'UNKNOWN'; const d=new Date(ts); const day=d.getDay(); const mins=d.getHours()*60+d.getMinutes(); const open = day>=1&&day<=5 && mins>=555 && mins<=930; return open?'OPEN':'CLOSED'; }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* =====================================================================
+   ENGINE — pure functions
+   ===================================================================== */
+
+/* R1: strike classification */
+function classify(pChg, oChg, eps){
+  eps = eps==null?S.settings.eps:eps;
+  if(pChg < -eps && oChg > eps) return 'SHORT_BUILDUP';
+  if(pChg > eps && oChg < -eps) return 'SHORT_COVERING';
+  if(pChg > eps && oChg > eps) return 'LONG_BUILDUP';
+  if(pChg < -eps && oChg < -eps) return 'LONG_UNWINDING';
+  return 'NEUTRAL';
+}
+const CLASS_LABEL = {
+  SHORT_BUILDUP:'Short buildup (prem ↓, OI ↑)',
+  SHORT_COVERING:'Short covering (prem ↑, OI ↓)',
+  LONG_BUILDUP:'Long buildup (prem ↑, OI ↑)',
+  LONG_UNWINDING:'Long unwinding (prem ↓, OI ↓)',
+  NEUTRAL:'No clear change'
+};
+
+/* build per-strike delta table between two snapshots */
+function deltas(prev, curr){
+  const out = [];
+  const pmap = {}; prev.strikes.forEach(s=>pmap[s.strike]=s);
+  curr.strikes.forEach(cs=>{
+    const ps = pmap[cs.strike]; if(!ps) return;
+    ['ce','pe'].forEach(k=>{
+      const p = ps[k]||{}, c = cs[k]||{};
+      const pPrem = num(p.premium), cPrem = num(c.premium);
+      const pOi = num(p.oi), cOi = num(c.oi);
+      const pVol = num(p.vol), cVol = num(c.vol);
+      const premChg = cPrem - pPrem;
+      const oiChg = cOi - pOi;
+      const volChg = cVol - pVol;
+      const pctPrem = pPrem!==0 ? (premChg/pPrem)*100 : 0;
+      const cls = classify(premChg, oiChg);
+      const volOi = cOi>0 ? cVol/cOi : 0;
+      const thin = cOi < S.settings.minOI || volOi < S.settings.minVolOi;
+      out.push({ strike:cs.strike, side:k.toUpperCase(), pPrem, cPrem, pOi, cOi, pVol, cVol, premChg, oiChg, volChg, pctPrem, cls, volOi, thin, cIv:num(c.iv), pIv:num(p.iv) });
+    });
+  });
+  out.sort((a,b)=> a.strike-b.strike || (a.side<b.side?-1:1));
+  return out;
+}
+
+/* R2/R3: probable seller pressure zone + short-covering trigger (side = 'CE'|'PE') */
+function sellerZone(prev, curr, dtab, side, spot){
+  const ev = [];
+  // anchor: in PREV, strikes on this side with SHORT_BUILDUP (prem down + OI up) and max OI concentration
+  const prevSide = prev.strikes.map(s=>({strike:s.strike, p:(s[side.toLowerCase()]||{}).premium, oi:(s[side.toLowerCase()]||{}).oi}))
+     .map(x=>({strike:x.strike, p:num(x.p), oi:num(x.oi)}));
+  const pSide = {}; prevSide.forEach(x=>pSide[x.strike]=x);
+  // OI concentration during a premium fall: use current table SHORT_BUILDUP rows' prev OI
+  const sb = dtab.filter(d=>d.side===side && d.cls==='SHORT_BUILDUP');
+  let anchor = null;
+  if(sb.length){ anchor = sb.reduce((a,b)=> (b.pOi>a.pOi?b:a)); }
+  // fallback: highest prev OI on side
+  if(!anchor){ const best = prevSide.slice().sort((a,b)=>b.oi-a.oi)[0]; if(best) ev.push('No short-buildup row found; using highest-OI strike as weak anchor.'); }
+  const anchorStrike = anchor?anchor.strike:(prevSide.sort((a,b)=>b.oi-a.oi)[0]||{}).strike;
+  const step = S.settings.strikeStep;
+  const zone = anchorStrike!=null ? { low: anchorStrike-step, high: anchorStrike+step, mid: anchorStrike } : null;
+  if(anchor) ev.push('OI concentrated at '+anchorStrike+' '+side+' during premium fall (prev OI '+fmt(anchor.pOi,0)+', prem '+fmt(anchor.pPrem,2)+' → '+fmt(anchor.cPrem,2)+').');
+
+  // trigger: current turn-up with OI falling + volume expanding near anchor
+  let trig = null;
+  const cand = dtab.filter(d=> d.side===side && d.cls==='SHORT_COVERING' && (!zone || Math.abs(d.strike-anchorStrike)<=2*step));
+  if(cand.length){
+    trig = cand.reduce((a,b)=> (b.volChg>a.volChg?b:a));
+    ev.push('Short-covering turn at '+trig.strike+' '+side+': prem '+fmt(trig.pPrem,2)+' → '+fmt(trig.cPrem,2)+' ('+pct(trig.pctPrem)+'), OI '+fmt(trig.pOi,0)+' → '+fmt(trig.cOi,0)+', vol '+fmt(trig.pVol,0)+' → '+fmt(trig.cVol,0)+'.');
+  } else ev.push('No short-covering turn detected near anchor on '+side+' side.');
+
+  // confirmation level: spot vs a key strike beyond the trigger
+  let conf = null;
+  if(trig){
+    conf = side==='CE' ? (trig.strike + step) : (trig.strike - step);
+    ev.push('Confirmation level (spot must '+ (side==='CE'?'hold above ':'hold below ') + conf +') for sustained move.');
+  }
+  return { anchorStrike, zone, trigger: trig, confirmLevel: conf, evidence: ev };
+}
+
+/* R5: opposite-side short-covering override */
+function oppositeOverride(dtab, side, spot, confirmN){
+  const opp = side==='PE' ? 'CE' : 'PE';
+  const rows = dtab.filter(d=> d.side===opp && d.cls==='SHORT_COVERING' && !d.thin && d.volChg>0);
+  if(!rows.length) return { status:'NONE', evidence:['No opposite-side short-covering cluster on '+opp+'.'], count:0, key:null };
+  const key = rows.reduce((a,b)=> (b.cOi>a.cOi?b:a));
+  const aboveKey = side==='PE' ? (spot > key.strike) : (spot < key.strike);
+  const n = rows.length;
+  const confirmed = n >= confirmN && aboveKey;
+  const partial = aboveKey || n>=confirmN;
+  const status = confirmed ? 'BLOCK/EXIT' : (partial ? 'REVERSAL-WATCH' : 'WATCH');
+  const ev = [];
+  ev.push(opp+' short-covering cluster: '+n+' strike(s). Key '+key.strike+' '+opp+' prem '+fmt(key.pPrem,2)+' → '+fmt(key.cPrem,2)+' ('+pct(key.pctPrem)+'), OI '+fmt(key.pOi,0)+' → '+fmt(key.cOi,0)+', vol +'+fmt(key.volChg,0)+'.');
+  ev.push('Spot '+fmt(spot,2)+' vs key '+key.strike+' → '+(aboveKey?'beyond key strike':'not beyond key strike')+'. Confirmations '+n+'/'+confirmN+'.');
+  if(status==='BLOCK/EXIT') ev.push(side+' signal BLOCKED: opposite-side covering + spot beyond key strike is confirmed.');
+  return { status, evidence:ev, count:n, key };
+}
+
+/* R6: transition confirmation across consecutive snapshots */
+function transitionConfirm(snaps, side){
+  const N = S.settings.confirmN;
+  if(snaps.length < N+1) return { ok:false, count:Math.max(0,snaps.length-1), need:N, evidence:'Need '+N+' consecutive same-direction deltas; only '+(snaps.length-1)+' available.' };
+  let dir = null, count = 0;
+  for(let i=1;i<snaps.length;i++){
+    const dt = deltas(snaps[i-1], snaps[i]);
+    const row = dt.filter(d=>d.side===side).sort((a,b)=> Math.abs(b.pctPrem)-Math.abs(a.pctPrem))[0];
+    if(!row) break;
+    const d = row.pctPrem>0 ? 1 : (row.pctPrem<0 ? -1 : 0);
+    if(d===0) break;
+    if(dir===null){ dir=d; count=1; } else if(d===dir){ count++; } else break;
+  }
+  return { ok: count>=N, count, need:N, evidence:'Consecutive same-direction deltas: '+count+'/'+N+'.' };
+}
+
+/* R4: data-quality gate */
+function dataQuality(snap){
+  const badges=[]; let cap=100;
+  const bars = snap.bars==null?0:num(snap.bars);
+  if(bars<=0){ badges.push('NO-DATA (bars: 0)'); cap=Math.min(cap,S.settings.staleCap); }
+  const age = ageMinutes(snap.ts);
+  if(age!=null && age > S.settings.staleMin){ badges.push('STALE ('+ageText(age)+')'); cap=Math.min(cap,S.settings.staleCap); }
+  const ms = marketStatus(snap.ts);
+  return { badges, cap, bars, age, marketStatus:ms, ok: badges.length===0 };
+}
+
+/* R3 + I9: confidence with visible components */
+function confidence(ctx){
+  const W = S.settings.w; const comps=[];
+  const push=(k,label,pts,ev,fired=true)=>comps.push({key:k,label,pts:fired?pts:0,max:pts,evidence:ev,fired});
+  push('oi','OI concentration at anchor (premium-fall)', W.oi, ctx.zone.evidence[0]||'anchor evidence', !!ctx.zone.anchorStrike);
+  push('turn','Premium turned up with OI falling', W.turn, ctx.zone.trigger?('turn at '+ctx.zone.trigger.strike):'no turn', !!ctx.zone.trigger);
+  const volExp = ctx.zone.trigger ? (ctx.zone.trigger.volChg>0) : false;
+  push('vol','Volume expansion on the turn', W.vol, volExp?'volume expanded':'no volume expansion', volExp);
+  const strongPct = ctx.zone.trigger ? Math.abs(ctx.zone.trigger.pctPrem)>=3 : false;
+  push('pct','% premium move ≥3% (normalised, not rupees)', W.pct, ctx.zone.trigger?('% change '+pct(ctx.zone.trigger.pctPrem)):'—', strongPct);
+  const ivUp = ctx.zone.trigger ? (ctx.zone.trigger.cIv>ctx.zone.trigger.pIv && ctx.zone.trigger.pIv>0) : false;
+  push('iv','IV confirm (premium up + IV up = repricing)', W.iv, ctx.zone.trigger?('IV '+(ivUp?'up → genuine repricing':'flat/down → decay reversal')):'—', ivUp);
+  const oppClear = ctx.override.status==='NONE'||ctx.override.status==='WATCH';
+  push('opp','Opposite-side override absent', W.opp, ctx.override.evidence[0], oppClear);
+  push('liq','Liquidity OK (OI & vol/OI above threshold)', W.liq, ctx.thinCount===0?'strikes liquid':'thin strikes: '+ctx.thinCount, ctx.thinCount===0);
+  push('conf','N consecutive confirmations met', W.conf, ctx.tconf.evidence, ctx.tconf.ok);
+  const expAdj = ctx.expiryMode ? true : false;
+  push('exp','Expiry / time-to-expiry adjustment', W.exp, ctx.expiryMode?'expiry-day mode: tighter SL, decay-adjusted':'normal DTE', expAdj);
+  const raw = comps.reduce((a,c)=>a+c.pts,0);
+  const maxRaw = comps.reduce((a,c)=>a+c.max,0);
+  let conf = Math.round(clamp(raw,0,100));
+  const caps=[];
+  if(!ctx.dq.ok){ conf=Math.min(conf, ctx.dq.cap); caps.push('data-quality cap → '+ctx.dq.cap); }
+  if(!ctx.tconf.ok){ conf=Math.min(conf,55); caps.push('no confirmation cap → 55'); }
+  if(ctx.thinCount>0 && ctx.side==='PE'||ctx.thinCount>0){ /* handled below */ }
+  if(ctx.thinCount>0){ conf=Math.min(conf,45); caps.push('illiquid prints cap → 45'); }
+  return { comps, raw, maxRaw, conf, caps };
+}
+
+/* R7: conflict-resolution matrix (priority order) */
+function conflictMatrix(ctx){
+  const rows=[];
+  // priority order (highest first)
+  if(!ctx.dq.ok){ rows.push({p:1,rule:'Data-quality gate',result:'WAIT / NO LIVE SIGNAL',detail:ctx.dq.badges.join(', ')}); return {verdict:'WAIT', rows, note:'No intraday history / stale data — live signal not permitted.'}; }
+  if(ctx.override.status==='BLOCK/EXIT'){ rows.push({p:2,rule:'Opposite-side short-covering override',result:'BLOCK / EXIT',detail:ctx.override.evidence.join(' ')}); return {verdict: ctx.side==='PE'?'BLOCK PE':'BLOCK CE', rows, note:'Opposite side strongly covering and spot beyond key strike.'}; }
+  if(ctx.override.status==='REVERSAL-WATCH'){ rows.push({p:2,rule:'Opposite-side override (partial)',result:'REVERSAL-WATCH',detail:ctx.override.evidence.join(' ')}); }
+  if(ctx.thinCount>0 && ctx.side==='PE'){ rows.push({p:3,rule:'Liquidity filter',result:'DOWNGRADE (thin strikes)',detail:ctx.thinCount+' thin strike(s); short-covering from illiquid prints suppressed.'}); }
+  if(!ctx.tconf.ok){ rows.push({p:4,rule:'Transition confirmation',result:'WAIT',detail:ctx.tconf.evidence}); return {verdict:'WAIT', rows, note:'Single snapshot cannot confirm.'}; }
+  if(!ctx.zone.trigger){ rows.push({p:5,rule:'No short-covering trigger',result:'NO-TRADE',detail:'No prem↑+OI↓+vol↑ turn detected on '+ctx.side+'.'}); return {verdict:'NO-TRADE', rows, note:'No trigger.'}; }
+  if(!ctx.risk.ok){ rows.push({p:6,rule:'Risk / R:R gate',result:'NO-TRADE',detail:ctx.risk.evidence}); return {verdict:'NO-TRADE', rows, note:'Gates failed.'}; }
+  rows.push({p:7,rule:'Entry conditions met',result:'SIGNAL',detail:'Zone + trigger + confirmation + liquidity + R:R all pass.'});
+  return { verdict: ctx.side==='CE'?'BUY CE':'BUY PE', rows, note:'Rule-based signal — trade with own discretion.' };
+}
+
+/* R8: risk engine */
+function riskEngine(entry, sl, tp, lot){
+  const d = Math.abs(entry - sl);
+  const riskPerLot = d * lot;
+  const rewardPerLot = Math.abs(tp - entry) * lot;
+  const rr = d>0 ? (Math.abs(tp-entry)/d) : 0;
+  const lots = riskPerLot>0 ? Math.floor(S.settings.maxLoss / riskPerLot) : 0;
+  const ok = d>0 && rr >= S.settings.rrGate && lots>=1;
+  const evidence = 'SL dist '+fmt(d,2)+' × lot '+lot+' = ₹'+fmt(riskPerLot,0)+'/lot. R:R '+fmt(rr,2)+' vs gate '+S.settings.rrGate+'. Max-loss sizing → '+lots+' lot(s).';
+  return { d, riskPerLot, rewardPerLot, rr, lots, margin: lots*S.settings.marginPerLot, ok, evidence };
+}
+
+/* I1: charges + slippage */
+function legCharges(premium, qty, side){
+  const st=S.settings; const turnover = premium*qty;
+  const brokerage = st.brok;
+  const stt = side==='SELL' ? turnover*st.stt/100 : 0;
+  const exch = turnover*st.exch/100;
+  const sebi = turnover*st.sebi/100;
+  const stamp = side==='BUY' ? turnover*st.stamp/100 : 0;
+  const gst = (brokerage+exch+sebi)*st.gst/100;
+  const slip = st.slip*qty;
+  const total = brokerage+stt+exch+sebi+stamp+gst+slip;
+  return { turnover, brokerage, stt, exch, sebi, stamp, gst, slip, total };
+}
+function plCompute(entry, exit, lots, lot, side){
+  const qty = lots*lot;
+  const gross = side==='BUY' ? (exit-entry)*qty : (entry-exit)*qty;
+  const cIn = legCharges(entry, qty, side);
+  const exitSide = side==='BUY' ? 'SELL' : 'BUY';
+  const cOut = legCharges(exit, qty, exitSide);
+  const charges = cIn.total + cOut.total;
+  const net = gross - charges;
+  const be = side==='BUY' ? entry + charges/qty : entry - charges/qty;
+  return { qty, gross, charges, net, be, cIn, cOut };
+}
+
+/* I5: expected move / moneyness gate */
+function expectedMove(spot, ivPct, dte){
+  const iv = ivPct/100;
+  const em = spot * iv * Math.sqrt(Math.max(dte,0)/252);
+  return { em, lo: spot-em, hi: spot+em };
+}
+function moneyness(spot, strike, side){
+  const d = Math.abs(spot-strike);
+  const atm = d <= S.settings.strikeStep/2;
+  let tag;
+  if(atm) tag='ATM';
+  else if(side==='CE') tag = strike<spot?'ITM':'OTM';
+  else tag = strike>spot?'ITM':'OTM';
+  return { tag, dist:d, atm };
+}
+
+/* R9: expiry framework */
+function expiryFramework(spot, strikes, dte, lot, expirySpot){
+  const es = expirySpot==null?spot:expirySpot;
+  const rows = strikes.map(k=>{
+    const intrinsicCE = Math.max(es-k,0);
+    const intrinsicPE = Math.max(k-es,0);
+    const mnCE = k<es?'ITM':(k===es?'ATM':'OTM');
+    const mnPE = k>es?'ITM':(k===es?'ATM':'OTM');
+    const dist = k-spot;
+    return { strike:k, dist, mnCE, mnPE, intrinsicCE, intrinsicPE };
+  });
+  return { rows, es };
+}
+function sellerExpiryPL(premiumReceived, strike, expirySpot, lot, side){
+  // side SELL: PE → obligation max(strike-expirySpot,0); CE → max(expirySpot-strike,0)
+  const intrinsic = side==='PE' ? Math.max(strike-expirySpot,0) : Math.max(expirySpot-strike,0);
+  const pl = premiumReceived - intrinsic*lot;
+  return { intrinsic, pl };
+}
+
+/* I11: 1D/1W/1M reference levels from snapshot history */
+function refLevels(snaps){
+  if(!snaps.length) return { day:null, week:null, month:null, note:'No snapshot history yet.' };
+  const today = new Date(); today.setHours(0,0,0,0);
+  const byKey = {};
+  snaps.forEach(s=>{ if(!s.ts) return; const d=new Date(s.ts); d.setHours(0,0,0,0); const k=d.getTime(); (byKey[k]=byKey[k]||[]).push(num(s.spot)); });
+  const keys = Object.keys(byKey).map(Number).sort((a,b)=>a-b);
+  const prevDayKey = keys.filter(k=>k<today.getTime()).pop();
+  const day = prevDayKey!=null ? hlc(byKey[prevDayKey]) : null;
+  // week: ISO week groups of completed weeks before current week
+  function weekKey(dt){ const d=new Date(dt); const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); d.setHours(0,0,0,0); return d.getTime(); }
+  const curWeek = weekKey(today);
+  const wk = {};
+  Object.keys(byKey).forEach(k=>{ const w=weekKey(+k); if(w<curWeek){ (wk[w]=wk[w]||[]).push(...byKey[k]); } });
+  const wkKeys = Object.keys(wk).map(Number).sort((a,b)=>a-b); const prevWk = wkKeys.pop();
+  const week = prevWk!=null ? hlc(wk[prevWk]) : null;
+  // month: completed months before current
+  const mo = {};
+  Object.keys(byKey).forEach(k=>{ const d=new Date(+k); const mk=d.getFullYear()*12+d.getMonth(); const cm=today.getFullYear()*12+today.getMonth(); if(mk<cm){ (mo[mk]=mo[mk]||[]).push(...byKey[k]); } });
+  const moKeys=Object.keys(mo).map(Number).sort((a,b)=>a-b); const prevMo=moKeys.pop();
+  const month = prevMo!=null ? hlc(mo[prevMo]) : null;
+  return { day, week, month, note:'Computed from saved snapshots (spot only). Manual entry overrides.' };
+}
+function hlc(arr){ if(!arr||!arr.length) return null; return { h:Math.max(...arr), l:Math.min(...arr), c:arr[arr.length-1] }; }
+
+/* =====================================================================
+   ORCHESTRATION
+   ===================================================================== */
+function runAnalysis(snaps, side){
+  if(snaps.length<2) return { error:'Need at least 2 snapshots (A and B) to compute deltas.' };
+  const prev = snaps[snaps.length-2], curr = snaps[snaps.length-1];
+  const dtab = deltas(prev, curr);
+  const spot = num(curr.spot);
+  const dq = dataQuality(curr);
+  const zone = sellerZone(prev, curr, dtab, side, spot);
+  const override = oppositeOverride(dtab, side, spot, S.settings.confirmN);
+  const tconf = transitionConfirm(snaps, side);
+  const thinCount = dtab.filter(d=>d.side===side && d.thin).length;
+  const expiryMode = num(curr.dte)===0 || num(curr.dte)<=0;
+  // risk (from zone trigger premium as entry; SL = trigger premium * (1 - pct) or step-based)
+  let risk = { ok:true, evidence:'Risk not evaluated (no trigger).', rr:0, lots:0, d:0 };
+  if(zone.trigger){
+    const entry = zone.trigger.cPrem;
+    const slPct = expiryMode?0.15:0.25;
+    const sl = entry*(1-slPct);
+    const tp = entry*(1+slPct*S.settings.rrGate);
+    risk = riskEngine(entry, sl, tp, S.settings.lotSize);
+    risk.evidence = 'Trigger entry '+fmt(entry,2)+', SL '+fmt(sl,2)+' ('+(expiryMode?'15%':'25%')+'), TP '+fmt(tp,2)+'. '+risk.evidence;
+  }
+  const ctx = { side, zone, override, tconf, thinCount, dq, risk, expiryMode };
+  const conf = confidence(ctx);
+  const cm = conflictMatrix(ctx);
+  const audit = [
+    { rule:'R1', name:'Strike classification', fired:true, inputs:{premChg:'per-strike', oiChg:'per-strike'}, result:dtab.map(d=>d.side+' '+d.strike+'='+d.cls).slice(0,12).join('; ')+(dtab.length>12?' …':''), counter:'' },
+    { rule:'R2/R3', name:'Probable seller pressure zone + trigger', fired:!!zone.trigger, inputs:{anchor:zone.anchorStrike, side}, result: zone.trigger?('trigger@'+zone.trigger.strike):'none', counter: zone.trigger?'':'No premium↑+OI↓ turn found.' },
+    { rule:'R5', name:'Opposite-side short-covering override', fired: override.status!=='NONE', inputs:{status:override.status, key:override.key&&override.key.strike}, result: override.status, counter: override.evidence.join(' ') },
+    { rule:'R6', name:'Transition confirmation (N deltas)', fired: tconf.ok, inputs:{count:tconf.count, need:tconf.need}, result: tconf.ok?'confirmed':'not confirmed', counter: tconf.evidence },
+    { rule:'R4', name:'Data-quality gate', fired: !dq.ok, inputs:{bars:dq.bars, age: ageText(dq.age), market:dq.marketStatus}, result: dq.ok?'clean':dq.badges.join(', '), counter: dq.ok?'':'Stale / no intraday bars.' },
+    { rule:'I4', name:'Liquidity filter', fired: thinCount>0, inputs:{thin:thinCount, minOI:S.settings.minOI, minVolOi:S.settings.minVolOi}, result: thinCount>0?'thin strikes present':'liquid', counter: thinCount>0?('Thin strikes: '+dtab.filter(d=>d.side===side&&d.thin).map(d=>d.strike).join(',')):'' },
+    { rule:'I8', name:'Risk / R:R gate', fired: !risk.ok, inputs:{rr:fmt(risk.rr,2), gate:S.settings.rrGate, lots:risk.lots}, result: risk.ok?'pass':'fail', counter: risk.evidence }
+  ];
+  return { prev, curr, dtab, spot, dq, zone, override, tconf, conf, cm, audit, risk, expiryMode };
+}
+
+/* =====================================================================
+   RENDERING
+   ===================================================================== */
+function renderAnalyze(res){
+  const out = $('analyzeOut');
+  if(res.error){ out.innerHTML = '<div class="card"><div class="banner red">'+esc(res.error)+'</div></div>'; return; }
+  const { side } = { side: $('selSide').value };
+  let html = '';
+  // data quality badges
+  html += '<div class="card"><h2>Data quality</h2>';
+  const dq = res.dq;
+  html += '<div>'+(dq.ok?'<span class="pill ok">DATA OK</span>':'')+ dq.badges.map(b=>'<span class="pill bad">'+esc(b)+'</span>').join('') + '<span class="pill neu">Market: '+dq.marketStatus+'</span><span class="pill neu">Age: '+ageText(dq.age)+'</span><span class="pill neu">Bars: '+dq.bars+'</span></div>';
+  html += '<div class="tiny">Confidence cap from data-quality gate: <b>'+dq.cap+'</b></div></div>';
+  // verdict
+  const v = res.cm.verdict;
+  let vcls = 'wait';
+  if(v==='BUY CE') vcls='buy-ce'; else if(v==='BUY PE') vcls='buy-pe'; else if(v==='NO-TRADE') vcls='notrade';
+  html += '<div class="card"><h2>Verdict</h2><div class="verdict '+vcls+'"><div class="big">'+esc(v)+'</div><div class="small muted" style="margin-top:4px">'+esc(res.cm.note||'')+'</div>';
+  html += '<div style="margin-top:8px"><span class="pill info">Confidence '+res.conf.conf+'/100</span> <span class="pill neu">raw '+res.conf.raw+'</span>'+(res.conf.caps.length?'<span class="pill warn">'+res.conf.caps.join(' · ')+'</span>':'')+'</div></div></div>';
+  // zone output (R2/R3)
+  html += '<div class="card"><h2>Probable Seller Pressure Zone / Short-Covering Trigger</h2>';
+  if(res.zone.zone){
+    html += '<div class="zone"><b>Probable Seller Pressure Zone ('+side+'):</b> '+res.zone.zone.low+' – '+res.zone.zone.high+' <span class="tiny">(anchor '+res.zone.anchorStrike+', ±1 step)</span></div>';
+  } else html += '<div class="zone muted">No probable zone (insufficient OI concentration).</div>';
+  html += '<div class="zone"><b>Short-Covering Trigger:</b> '+(res.zone.trigger? (res.zone.trigger.strike+' '+side+' @ prem '+fmt(res.zone.trigger.cPrem,2)+' (was '+fmt(res.zone.trigger.pPrem,2)+', '+pct(res.zone.trigger.pctPrem)+')') : '<span class="muted">not triggered</span>')+'</div>';
+  html += '<div class="zone"><b>Confirmation Level:</b> '+(res.zone.confirmLevel!=null? res.zone.confirmLevel+' (spot must '+(side==='CE'?'hold above':'hold below')+')' : '<span class="muted">n/a</span>')+'</div>';
+  html += '<div class="tiny" style="margin-top:6px">Note: yeh PROBABLE zone hai, koi "exact seller SL" nahi.</div>';
+  html += '</div>';
+  // evidence
+  html += '<div class="card"><h2>Evidence</h2><ul class="small">'+res.zone.evidence.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul></div>';
+  // override
+  html += '<div class="card"><h2>Opposite-side override</h2><div><span class="pill '+(res.override.status==='BLOCK/EXIT'?'bad':(res.override.status==='REVERSAL-WATCH'?'warn':'ok'))+'">'+esc(res.override.status)+'</span></div><ul class="small">'+res.override.evidence.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul></div>';
+  // confidence breakdown (I9)
+  html += '<div class="card"><h2>Confidence breakdown (every point shown)</h2><div class="tblwrap"><table><thead><tr><th>Component</th><th>Pts</th><th>Evidence</th></tr></thead><tbody>';
+  res.conf.comps.forEach(c=>{ html += '<tr><td>'+esc(c.label)+'</td><td>'+(c.fired?'+':'')+c.pts+'/'+c.max+'</td><td style="text-align:left;white-space:normal">'+esc(c.evidence||'')+'</td></tr>'; });
+  html += '<tr><td><b>Raw total</b></td><td><b>'+res.conf.raw+'</b></td><td></td></tr></table></div>';
+  if(res.conf.caps.length) html += '<div class="tiny">Caps applied: '+res.conf.caps.join('; ')+'</div>';
+  html += '</div>';
+  // classification table
+  html += '<div class="card"><h2>Strike classification (A → B)</h2><div class="tblwrap"><table><thead><tr><th>Strike</th><th>Side</th><th>Prem A</th><th>Prem B</th><th>%chg</th><th>OI A</th><th>OI B</th><th>ΔOI</th><th>VolΔ</th><th>Vol/OI</th><th>Class</th><th>Liq</th></tr></thead><tbody>';
+  res.dtab.forEach(d=>{ html += '<tr><td>'+d.strike+'</td><td>'+d.side+'</td><td>'+fmt(d.pPrem,2)+'</td><td>'+fmt(d.cPrem,2)+'</td><td>'+pct(d.pctPrem,1)+'</td><td>'+fmt(d.pOi,0)+'</td><td>'+fmt(d.cOi,0)+'</td><td>'+fmt(d.oiChg,0)+'</td><td>'+fmt(d.volChg,0)+'</td><td>'+fmt(d.volOi,3)+'</td><td>'+esc(CLASS_LABEL[d.cls])+'</td><td>'+(d.thin?'<span class="pill warn">thin</span>':'<span class="pill ok">ok</span>')+'</td></tr>'; });
+  html += '</tbody></table></div></div>';
+  // conflict matrix (I7)
+  html += '<div class="card"><h2>Conflict-resolution matrix (priority order)</h2><div class="tblwrap"><table><thead><tr><th>#</th><th>Rule</th><th>Result</th><th>Detail</th></tr></thead><tbody>';
+  res.cm.rows.forEach(r=>{ html += '<tr><td>'+r.p+'</td><td>'+esc(r.rule)+'</td><td>'+esc(r.result)+'</td><td style="text-align:left;white-space:normal">'+esc(r.detail)+'</td></tr>'; });
+  html += '</tbody></table></div></div>';
+  // audit trail (I9) - most important
+  html += '<div class="card"><h2>🧾 Audit trail (inputs · rules fired · overridden · counter-evidence)</h2>';
+  res.audit.forEach(a=>{
+    const cls = a.fired ? (a.rule==='R5'?'override':'fired') : 'blocked';
+    html += '<div class="audit-row '+cls+'"><b>'+a.rule+' '+esc(a.name)+'</b> — '+(a.fired?'<span class="pill '+(a.rule==='R5'?'warn':'ok')+'">FIRED</span>':'<span class="pill neu">not fired</span>')+'<div class="tiny">Inputs: '+esc(JSON.stringify(a.inputs))+'</div><div class="tiny">Result: '+esc(String(a.result))+'</div>'+(a.counter?'<div class="tiny" style="color:var(--amber)">Counter-evidence: '+esc(a.counter)+'</div>':'')+'</div>';
+  });
+  html += '</div>';
+  // risk summary
+  html += '<div class="card"><h2>Risk snapshot</h2><div class="kv"><span>SL distance</span><b>'+fmt(res.risk.d,2)+'</b></div><div class="kv"><span>Risk / lot</span><b>₹'+fmt(res.risk.riskPerLot,0)+'</b></div><div class="kv"><span>R:R</span><b>'+fmt(res.risk.rr,2)+' (gate '+S.settings.rrGate+')</b></div><div class="kv"><span>Sized lots</span><b>'+res.risk.lots+'</b></div><div class="kv"><span>Margin approx</span><b>₹'+fmt(res.risk.margin,0)+'</b></div><div class="tiny" style="margin-top:6px">'+esc(res.risk.evidence)+'</div></div>';
+  // save to journal
+  html += '<div class="card"><button class="btn blue" id="btnLogSig">📒 Log this signal to journal</button></div>';
+  out.innerHTML = html;
+  const b = $('btnLogSig'); if(b) b.onclick = ()=>logSignal(res, side);
+}
+
+function logSignal(res, side){
+  const t = res.zone.trigger;
+  const rec = { id:uid(), ts:isoLocal(new Date()), side, verdict:res.cm.verdict, confidence:res.conf.conf, entry: t?t.cPrem:null, rulesFired: res.audit.filter(a=>a.fired).map(a=>a.rule), counter: res.audit.filter(a=>a.counter).map(a=>a.rule+': '+a.counter), outcome:'open' };
+  S.journal.unshift(rec); save(); renderJournal(); alert('Logged. Journal tab me outcome tag karo.');
+}
+
+function renderJournal(){
+  const out = $('journalOut');
+  if(!S.journal.length){ out.innerHTML='<div class="muted small">Koi signal log nahi. Analyze tab se log karo.</div>'; return; }
+  let html = '<div class="tblwrap"><table><thead><tr><th>Time</th><th>Side</th><th>Verdict</th><th>Conf</th><th>Entry</th><th>Outcome</th><th></th></tr></thead><tbody>';
+  S.journal.forEach(j=>{
+    html += '<tr><td>'+esc((j.ts||'').replace('T',' '))+'</td><td>'+esc(j.side)+'</td><td>'+esc(j.verdict)+'</td><td>'+j.confidence+'</td><td>'+(j.entry!=null?fmt(j.entry,2):'—')+'</td><td><select data-jid="'+j.id+'" class="jout"><option '+(j.outcome==='open'?'selected':'')+'>open</option><option '+(j.outcome==='win'?'selected':'')+'>win</option><option '+(j.outcome==='loss'?'selected':'')+'>loss</option><option '+(j.outcome==='expired'?'selected':'')+'>expired</option></select></td><td><button class="btn sm danger jdel" data-jid="'+j.id+'">✕</button></td></tr>';
+  });
+  html += '</tbody></table></div>';
+  // hit-rate per rule
+  const rules = {};
+  S.journal.forEach(j=>{ (j.rulesFired||[]).forEach(r=>{ rules[r]=rules[r]||{n:0,w:0,l:0}; rules[r].n++; if(j.outcome==='win')rules[r].w++; if(j.outcome==='loss')rules[r].l++; }); });
+  html += '<h3>Hit-rate per rule</h3><div class="tblwrap"><table><thead><tr><th>Rule</th><th>Signals</th><th>Wins</th><th>Losses</th><th>Win-rate</th></tr></thead><tbody>';
+  Object.keys(rules).sort().forEach(r=>{ const x=rules[r]; const wr = (x.w+x.l)>0?(x.w/(x.w+x.l)*100):null; html += '<tr><td>'+esc(r)+'</td><td>'+x.n+'</td><td>'+x.w+'</td><td>'+x.l+'</td><td>'+(wr==null?'—':fmt(wr,0)+'%')+'</td></tr>'; });
+  html += '</tbody></table></div>';
+  out.innerHTML = html;
+  out.querySelectorAll('.jout').forEach(sel=> sel.onchange = e=>{ const j=S.journal.find(x=>x.id===e.target.dataset.jid); if(j){ j.outcome=e.target.value; save(); renderJournal(); } });
+  out.querySelectorAll('.jdel').forEach(b=> b.onclick = e=>{ S.journal = S.journal.filter(x=>x.id!==e.target.dataset.jid); save(); renderJournal(); });
+}
+
+function renderRefs(){
+  const out=$('refsOut');
+  const auto = refLevels(S.snapshots);
+  const r = S.refs||{};
+  const pick=(a,m)=> (r[a]&&r[a].h!=null) ? r[a] : m;
+  const day = pick('day', auto.day), week = pick('week', auto.week), month = pick('month', auto.month);
+  const row=(label,x)=> x? '<div class="kv"><span>'+label+' H / L / C</span><b>'+fmt(x.h,2)+' / '+fmt(x.l,2)+' / '+fmt(x.c,2)+'</b></div>' : '<div class="kv"><span>'+label+'</span><b class="muted">not available</b></div>';
+  out.innerHTML = '<div class="card">'+row('Prev day',day)+row('Prev week',week)+row('Prev month',month)+'<div class="tiny" style="margin-top:6px">'+esc(auto.note)+'</div></div>';
+}
+
+function renderSnaps(){
+  $('hdrSnap').textContent = S.snapshots.length+' snapshot(s)';
+  const out=$('snapList');
+  if(!S.snapshots.length){ out.innerHTML='<div class="muted small">Koi snapshot nahi.</div>'; }
+  else {
+    let html='';
+    S.snapshots.forEach((s,i)=>{
+      const dq = dataQuality(s);
+      html += '<div class="card" style="padding:10px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div><b>#'+(i+1)+'</b> '+esc((s.ts||'').replace('T',' '))+' <span class="tiny">· spot '+fmt(num(s.spot),2)+' · IV '+fmt(num(s.iv),1)+'% · DTE '+num(s.dte)+' · '+s.strikes.length+' strikes · '+esc(s.source||'manual')+'</span></div><button class="btn sm danger snapdel" data-i="'+i+'">✕</button></div>'+dq.badges.map(b=>'<span class="pill bad">'+esc(b)+'</span>').join('')+'</div>';
+    });
+    out.innerHTML=html;
+    out.querySelectorAll('.snapdel').forEach(b=> b.onclick = e=>{ S.snapshots.splice(+e.target.dataset.i,1); save(); renderSnaps(); fillSnapshotSelectors(); });
+  }
+  fillSnapshotSelectors();
+}
+
+function fillSnapshotSelectors(){
+  [['selA',0],['selB',1]].forEach(([id,def])=>{
+    const sel=$(id); const cur=sel.value; sel.innerHTML='';
+    S.snapshots.forEach((s,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent='#'+(i+1)+' — '+((s.ts||'').replace('T',' ')); sel.appendChild(o); });
+    const n=S.snapshots.length; sel.value = (cur!=='' && +cur<n) ? cur : String(Math.max(0,n-1-def));
+  });
+}
+
+/* ---------- strike rows ---------- */
+function strikeRow(vals){
+  vals=vals||{};
+  const wrap=document.createElement('div'); wrap.className='strike-row';
+  const keys=['strike','ceP','ceOi','ceChg','ceVol','peP','peOi','peChg','peVol'];
+  keys.forEach(k=>{ const inp=document.createElement('input'); inp.type='number'; inp.step='any'; inp.dataset.k=k; inp.value=vals[k]!=null?vals[k]:''; wrap.appendChild(inp); });
+  $('strikeRows').appendChild(wrap);
+}
+function readStrikeRows(){
+  const rows=[];
+  $('strikeRows').querySelectorAll('.strike-row').forEach(r=>{
+    const g=k=>r.querySelector('input[data-k="'+k+'"]').value;
+    const strike=num(g('strike')); if(!strike) return;
+    rows.push({ strike, ce:{premium:num(g('ceP')),oi:num(g('ceOi')),chgOi:num(g('ceChg')),vol:num(g('ceVol'))}, pe:{premium:num(g('peP')),oi:num(g('peOi')),chgOi:num(g('peChg')),vol:num(g('peVol'))} });
+  });
+  return rows.sort((a,b)=>a.strike-b.strike);
+}
+
+/* ---------- CSV ---------- */
+function parseCSV(text){
+  const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.trim()!=='');
+  if(lines.length<2) return { error:'CSV me header + data rows chahiye.' };
+  const split = l => { const out=[]; let cur='',q=false; for(let i=0;i<l.length;i++){ const c=l[i]; if(c==='"'){ q=!q; } else if((c===','||c==='\t'||c===';') && !q){ out.push(cur); cur=''; } else cur+=c; } out.push(cur); return out.map(s=>s.trim().replace(/^"|"$/g,'')); };
+  const head = split(lines[0]).map(h=>h.toLowerCase());
+  const find = (re)=>{ for(let i=0;i<head.length;i++){ if(re.test(head[i])) return i; } return -1; };
+  const iStrike = find(/strike|strike price/);
+  const iCeP = find(/call.*(ltp|last|prem)|ce.*(ltp|last|prem)|ce\s*price/);
+  const iPeP = find(/put.*(ltp|last|prem)|pe.*(ltp|last|prem)|pe\s*price/);
+  const iCeOi = find(/call.*\boi\b|ce.*\boi\b/);
+  const iPeOi = find(/put.*\boi\b|pe.*\boi\b/);
+  const iCeChg = find(/call.*(chg|change).*oi|ce.*(chg|change).*oi/);
+  const iPeChg = find(/put.*(chg|change).*oi|pe.*(chg|change).*oi/);
+  const iCeVol = find(/call.*vol|ce.*vol/);
+  const iPeVol = find(/put.*vol|pe.*vol/);
+  const iSpot = find(/spot|underlying|nifty\s*50|index/);
+  const iTime = find(/time|date|timestamp/);
+  if(iStrike<0) return { error:'Strike column nahi mila. Header me "Strike" keyword chahiye.' };
+  const strikes=[]; let spot=null, ts=null;
+  for(let r=1;r<lines.length;r++){
+    const c=split(lines[r]); const strike=num(c[iStrike]); if(!strike) continue;
+    strikes.push({ strike, ce:{premium:iCeP>=0?num(c[iCeP]):0, oi:iCeOi>=0?num(c[iCeOi]):0, chgOi:iCeChg>=0?num(c[iCeChg]):0, vol:iCeVol>=0?num(c[iCeVol]):0}, pe:{premium:iPeP>=0?num(c[iPeP]):0, oi:iPeOi>=0?num(c[iPeOi]):0, chgOi:iPeChg>=0?num(c[iPeChg]):0, vol:iPeVol>=0?num(c[iPeVol]):0} });
+    if(spot==null && iSpot>=0) spot=num(c[iSpot]);
+    if(ts==null && iTime>=0){ const d=parseTs(c[iTime]); if(d) ts=isoLocal(d); }
+  }
+  const mapping = { strike:iStrike, ceP:iCeP, peP:iPeP, ceOi:iCeOi, peOi:iPeOi, ceChg:iCeChg, peChg:iPeChg, ceVol:iCeVol, peVol:iPeVol, spot:iSpot, time:iTime };
+  return { strikes, spot, ts, mapping, head };
+}
+
+/* =====================================================================
+   ZIP WRITER (STORE method) + ANDROID PROJECT
+   ===================================================================== */
+const CRC_TABLE = (()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++){ c = (c&1)?(0xEDB88320 ^ (c>>>1)):(c>>>1); } t[n]=c>>>0; } return t; })();
+function crc32(u8){ let c=0xFFFFFFFF; for(let i=0;i<u8.length;i++){ c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c>>>8); } return (c ^ 0xFFFFFFFF)>>>0; }
+function dosTime(d){ return ((d.getHours()<<11)|(d.getMinutes()<<5)|(Math.floor(d.getSeconds()/2)))&0xFFFF; }
+function dosDate(d){ return (((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate())&0xFFFF; }
+function makeZip(files){
+  const enc=new TextEncoder(); const chunks=[]; const central=[]; let offset=0;
+  const now=new Date(); const dt=dosTime(now), dd=dosDate(now);
+  files.forEach(f=>{
+    const nameU8=enc.encode(f.name); const dataU8=enc.encode(f.data);
+    const crc=crc32(dataU8);
+    const lh=new Uint8Array(30+nameU8.length); const dv=new DataView(lh.buffer);
+    dv.setUint32(0,0x04034b50,true); dv.setUint16(4,20,true); dv.setUint16(6,0x0800,true); dv.setUint16(8,0,true); dv.setUint16(10,dt,true); dv.setUint16(12,dd,true); dv.setUint32(14,crc,true); dv.setUint32(18,dataU8.length,true); dv.setUint32(22,dataU8.length,true); dv.setUint16(26,nameU8.length,true); dv.setUint16(28,0,true); lh.set(nameU8,30);
+    chunks.push(lh, dataU8);
+    const ch=new Uint8Array(46+nameU8.length); const cv=new DataView(ch.buffer);
+    cv.setUint32(0,0x02014b50,true); cv.setUint16(4,20,true); cv.setUint16(6,20,true); cv.setUint16(8,0x0800,true); cv.setUint16(10,0,true); cv.setUint16(12,dt,true); cv.setUint16(14,dd,true); cv.setUint32(16,crc,true); cv.setUint32(20,dataU8.length,true); cv.setUint32(24,dataU8.length,true); cv.setUint16(28,nameU8.length,true); cv.setUint16(30,0,true); cv.setUint16(32,0,true); cv.setUint16(34,0,true); cv.setUint16(36,0,true); cv.setUint32(38,0,true); cv.setUint32(42,offset,true); ch.set(nameU8,46);
+    central.push(ch);
+    offset += lh.length + dataU8.length;
+  });
+  let cdSize=0; central.forEach(c=>cdSize+=c.length);
+  const eocd=new Uint8Array(22); const ev=new DataView(eocd.buffer);
+  ev.setUint32(0,0x06054b50,true); ev.setUint16(4,0,true); ev.setUint16(6,0,true); ev.setUint16(8,files.length,true); ev.setUint16(10,files.length,true); ev.setUint32(12,cdSize,true); ev.setUint32(16,offset,true); ev.setUint16(20,0,true);
+  return new Blob([...chunks, ...central, eocd], {type:'application/zip'});
+}
+
+function getProjectFiles(){
+  const files=[];
+  document.querySelectorAll('script[type="text/plain"][data-path]').forEach(sc=>{ files.push({ name: sc.getAttribute('data-path'), data: sc.textContent }); });
+  // bundle the live app HTML as the offline asset
+  files.push({ name:'app/src/main/assets/option-chain-analyzer.html', data: '<!DOCTYPE html>\n'+document.documentElement.outerHTML });
+  return files;
+}
+function downloadZip(){
+  try{
+    const files=getProjectFiles();
+    const blob=makeZip(files);
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='option-chain-analyzer-android.zip'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  }catch(e){ alert('ZIP build failed: '+e.message); }
+}
+
+/* =====================================================================
+   INIT / WIRING
+   ===================================================================== */
+function fillSettings(){
+  const st=S.settings;
+  const set=(id,v)=>{ const e=$(id); if(e) e.value=v; };
+  set('stLot',st.lotSize); set('stStep',st.strikeStep); set('stStale',st.staleMin); set('stCap',st.staleCap);
+  set('stConf',st.confirmN); set('stMinOi',st.minOI); set('stVolOi',st.minVolOi);
+  set('stMaxLoss',st.maxLoss); set('stRr',st.rrGate); set('stMargin',st.marginPerLot);
+  set('stBrok',st.brok); set('stStt',st.stt); set('stExch',st.exch); set('stSebi',st.sebi); set('stStamp',st.stamp); set('stGst',st.gst); set('stSlip',st.slip); set('stIv',st.iv);
+  set('wOi',st.w.oi); set('wTurn',st.w.turn); set('wVol',st.w.vol); set('wPct',st.w.pct); set('wIv',st.w.iv); set('wOpp',st.w.opp); set('wLiq',st.w.liq); set('wConf',st.w.conf); set('wExp',st.w.exp);
+}
+function readSettings(){
+  const st=S.settings; const g=id=>num($(id).value);
+  st.lotSize=g('stLot'); st.strikeStep=g('stStep')||50; st.staleMin=g('stStale'); st.staleCap=g('stCap');
+  st.confirmN=Math.max(1,Math.round(g('stConf'))); st.minOI=g('stMinOi'); st.minVolOi=g('stVolOi');
+  st.maxLoss=g('stMaxLoss'); st.rrGate=g('stRr'); st.marginPerLot=g('stMargin');
+  st.brok=g('stBrok'); st.stt=g('stStt'); st.exch=g('stExch'); st.sebi=g('stSebi'); st.stamp=g('stStamp'); st.gst=g('stGst'); st.slip=g('stSlip'); st.iv=g('stIv');
+  st.w={oi:g('wOi'),turn:g('wTurn'),vol:g('wVol'),pct:g('wPct'),iv:g('wIv'),opp:g('wOpp'),liq:g('wLiq'),conf:g('wConf'),exp:g('wExp')};
+}
+
+function buildDemo(){
+  const t1=new Date(Date.now()-15*60000), t2=new Date();
+  const mk=(ts,spot,iv,rows)=>({ id:uid(), ts:isoLocal(ts), source:'DEMO', spot, iv, dte:3, expiry:'', bars:0, strikes:rows });
+  const a=mk(t1,23080,13.2,[
+    {strike:22900,ce:{premium:245,oi:90000,chgOi:0,vol:60000},pe:{premium:60,oi:180000,chgOi:0,vol:90000}},
+    {strike:23000,ce:{premium:160,oi:120000,chgOi:0,vol:80000},pe:{premium:95,oi:210000,chgOi:0,vol:110000}},
+    {strike:23100,ce:{premium:99.9,oi:318000,chgOi:0,vol:150000},pe:{premium:150,oi:140000,chgOi:0,vol:70000}},
+    {strike:23200,ce:{premium:70,oi:260000,chgOi:0,vol:90000},pe:{premium:220,oi:80000,chgOi:0,vol:40000}}
+  ]);
+  const b=mk(t2,23120,13.9,[
+    {strike:22900,ce:{premium:255,oi:92000,chgOi:2000,vol:64000},pe:{premium:52,oi:176000,chgOi:-4000,vol:88000}},
+    {strike:23000,ce:{premium:172,oi:124000,chgOi:4000,vol:90000},pe:{premium:88,oi:206000,chgOi:-4000,vol:100000}},
+    {strike:23100,ce:{premium:183.85,oi:193000,chgOi:-125000,vol:240000},pe:{premium:140,oi:145000,chgOi:5000,vol:72000}},
+    {strike:23200,ce:{premium:78,oi:258000,chgOi:-2000,vol:95000},pe:{premium:215,oi:82000,chgOi:2000,vol:41000}}
+  ]);
+  S.snapshots.push(a,b); save(); renderSnaps();
+  alert('DEMO pair loaded (values are FAKE, only for testing the UI/engine).');
+}
+
+function init(){
+  load();
+  // strike seed
+  strikeRow({strike:23000}); strikeRow({strike:23100});
+  $('inTime').value = nowLocalInput();
+  fillSettings(); renderSnaps(); renderJournal(); renderRefs();
+  $('exLot').value = S.settings.lotSize; $('plLot').value = S.settings.lotSize; $('rkLot').value = S.settings.lotSize;
+  // tabs
+  document.querySelectorAll('button.tab').forEach(b=> b.onclick = ()=>{
+    document.querySelectorAll('button.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); $('page-'+b.dataset.tab).classList.add('active');
+    if(b.dataset.tab==='refs') renderRefs();
+    if(b.dataset.tab==='journal') renderJournal();
+    if(b.dataset.tab==='android') renderZipTree();
+  });
+  // strike buttons
+  $('btnAddStrike').onclick = ()=>strikeRow({});
+  $('btnClearStrikes').onclick = ()=>{ $('strikeRows').innerHTML=''; };
+  $('btnAddAtm').onclick = ()=>{ const s=num($('inSpot').value)||23000; const st=S.settings.strikeStep; for(let i=-5;i<=5;i++) strikeRow({strike:s+i*st}); };
+  $('btnLoadDemo').onclick = buildDemo;
+  // save snapshot
+  $('btnSaveSnap').onclick = ()=>{
+    const strikes=readStrikeRows();
+    if(!strikes.length){ alert('Kam se kam ek strike daalo.'); return; }
+    const ts=$('inTime').value ? isoLocal(new Date($('inTime').value)) : isoLocal(new Date());
+    const snap={ id:uid(), ts, source:'manual', spot:num($('inSpot').value), iv:num($('inIv').value), dte:num($('inDte').value), expiry:$('inExpiry').value, bars:num($('inBars').value), strikes };
+    S.snapshots.push(snap); save(); renderSnaps(); alert('Snapshot saved (# '+S.snapshots.length+').');
+  };
+  // csv
+  $('csvFile').onchange = e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ $('csvText').value=r.result; }; r.readAsText(f); };
+  $('btnParseCsv').onclick = ()=>{
+    const res=parseCSV($('csvText').value||'');
+    if(res.error){ $('csvPreview').innerHTML='<div class="banner red">'+esc(res.error)+'</div>'; return; }
