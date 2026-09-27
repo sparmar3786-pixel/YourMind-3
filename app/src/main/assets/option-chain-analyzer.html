@@ -135,6 +135,12 @@ footer{border-color:#1b2b3d}
  #strikeHead{grid-template-columns:repeat(9,minmax(70px,1fr))}
 }
 
+
+/* 9-TAB MASTER FORMAT */
+nav#tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:8px 10px;overflow:visible}
+button.tab{width:100%;min-width:0;min-height:38px;padding:0 6px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(min-width:700px){nav#tabs{grid-template-columns:repeat(9,minmax(0,1fr));max-width:1100px;margin:0 auto}button.tab{font-size:12.5px}}
+@media(max-width:380px){nav#tabs{gap:5px}button.tab{font-size:10.5px;min-height:36px;padding:0 3px}}
 </style>
 </head>
 <body>
@@ -143,7 +149,7 @@ footer{border-color:#1b2b3d}
   <div class="sub">Rule-based, transparent engine · Hinglish-friendly · offline · <span id="hdrSnap">0 snapshot(s)</span></div>
 </header>
 <nav id="tabs">
-  <button class="tab" data-tab="input">📝 Input</button>
+  <button class="tab active" data-tab="input">📝 Input</button>
   <button class="tab" data-tab="analyze">🔎 Analyze</button>
   <button class="tab" data-tab="expiry">⏳ Expiry</button>
   <button class="tab" data-tab="pl">💰 P/L &amp; Charges</button>
@@ -151,7 +157,6 @@ footer{border-color:#1b2b3d}
   <button class="tab" data-tab="journal">📒 Journal</button>
   <button class="tab" data-tab="refs">📐 Refs 1D/1W/1M</button>
   <button class="tab" data-tab="settings">⚙️ Settings</button>
-  <button class="tab active" data-tab="android">🤖 Android</button>
   <button class="tab" data-tab="help">❓ Help</button>
 </nav>
 <main>
@@ -368,7 +373,7 @@ footer{border-color:#1b2b3d}
 </section>
 
 <!-- ============ ANDROID ============ -->
-<section class="page active" id="page-android">
+<section class="page" id="page-android">
   <div class="card">
     <h2>🤖 Android project (offline WebView app)</h2>
     <div class="tiny">Yeh ek complete Android Studio project (Kotlin + WebView) generate karta hai, jisme yeh HTML app <code>assets/</code> me bundled hai — APK offline chalega.</div>
