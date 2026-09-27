@@ -78,6 +78,63 @@ hr{border:none;border-top:1px solid var(--line);margin:12px 0}
 #strikeHead div{font-size:10px;color:var(--muted);text-align:center;font-weight:700}
 input[type=checkbox]{width:22px;height:22px;min-height:22px}
 .inline{display:flex;align-items:center;gap:8px}
+
+/* YOURMIND PROFESSIONAL TRADING UI v2 — Canva-inspired visual system */
+:root{
+ --bg:#070b12;--panel:#0d1420;--panel2:#121c2a;--panel3:#182536;
+ --text:#f4f7fb;--muted:#8ea0b5;--line:#223247;--accent:#18e0c4;
+ --blue:#38a8ff;--green:#28d17c;--red:#ff4d6d;--amber:#ffb020;--purple:#a78bfa;
+ --ce:#19d98a;--pe:#ff5374;--radius:14px;
+}
+body{background:radial-gradient(circle at 50% -10%,#102033 0,#070b12 42%);font-size:14px}
+header{background:rgba(7,11,18,.94);border-bottom:1px solid #1e3045;padding:10px 12px}
+header h1{font-size:17px;letter-spacing:.15px}
+header h1:first-letter{color:var(--accent)}
+nav#tabs{gap:7px;background:rgba(7,11,18,.96);border-bottom:1px solid #1d2d40;padding:8px 10px}
+button.tab{min-height:40px;padding:0 13px;background:#0d1724;border-color:#22344a;color:#91a6bc;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+button.tab.active{background:linear-gradient(135deg,#1ce0c3,#0fa9a7);color:#031a17;box-shadow:0 0 18px rgba(24,224,196,.16)}
+main{padding:11px 10px 42px}
+.card{background:linear-gradient(180deg,#101a27,#0d1520);border:1px solid #20344b;border-radius:15px;padding:13px;margin-bottom:11px;box-shadow:0 5px 18px rgba(0,0,0,.18)}
+.card h2{font-size:14px;color:#f3f7fb}
+.card h3{color:#9db0c5;font-size:11px;letter-spacing:.8px}
+label{font-size:11px;color:#8fa3b9}
+input,select,textarea{background:#111d2c;border:1px solid #263b53;border-radius:10px;color:#eef5fb;min-height:43px}
+input:focus,select:focus,textarea:focus{border-color:#18d8c0;box-shadow:0 0 0 2px rgba(24,216,192,.09)}
+button.btn{min-height:45px;background:#172637;border:1px solid #263c53;box-shadow:none}
+button.primary{background:linear-gradient(135deg,#1de1c3,#0ca7a4);color:#021916;border:0}
+button.blue{background:linear-gradient(135deg,#35b5ff,#2569e8);color:#041321;border:0}
+button.warn{background:#342711;color:#ffc04d;border-color:#62491a}
+button.danger{background:#351522;color:#ff6480;border-color:#6a263a}
+.pill{font-weight:700}
+.pill.ok{background:#09291d;color:#35e28c;border-color:#176442}
+.pill.bad{background:#32121d;color:#ff6682;border-color:#6b273c}
+.pill.warn{background:#30240e;color:#ffbd3f;border-color:#5e481a}
+.pill.info{background:#0b2437;color:#4ebaff;border-color:#215373}
+.tblwrap{border-color:#24384e}
+table{font-size:12px;min-width:560px}
+th,td{border-bottom:1px solid #1f3042;padding:8px}
+th{background:#142131;color:#8ea4ba}
+th:first-child,td:first-child{background:#101b29}
+.verdict.buy-ce{background:#06281c;border-color:#176541}
+.verdict.buy-pe{background:#2b1019;border-color:#71263d}
+.verdict.wait{background:#30250f;border-color:#654b1d}
+.zone{background:#101b29;border-color:#2a4057}
+.banner{background:#30240f;border-color:#63491c}
+footer{border-color:#1b2b3d}
+.strike-row input[data-k="strike"]{border-color:#36506a;font-weight:800}
+.strike-row input[data-k="ceP"],.strike-row input[data-k="ceOi"],.strike-row input[data-k="ceChg"],.strike-row input[data-k="ceVol"]{border-left:2px solid var(--ce)}
+.strike-row input[data-k="peP"],.strike-row input[data-k="peOi"],.strike-row input[data-k="peChg"],.strike-row input[data-k="peVol"]{border-left:2px solid var(--pe)}
+#strikeHead div:nth-child(2),#strikeHead div:nth-child(3),#strikeHead div:nth-child(4),#strikeHead div:nth-child(5){color:var(--ce)}
+#strikeHead div:nth-child(6),#strikeHead div:nth-child(7),#strikeHead div:nth-child(8),#strikeHead div:nth-child(9){color:var(--pe)}
+@media(max-width:600px){
+ body{font-size:13px}.card{padding:11px;border-radius:13px}
+ .row3{grid-template-columns:1fr 1fr}.row3>div:last-child:nth-child(3){grid-column:1/-1}
+ .row{gap:7px}.row3{gap:7px}
+ button.btn{font-size:14px}
+ .strike-row{grid-template-columns:repeat(9,minmax(70px,1fr))}
+ #strikeHead{grid-template-columns:repeat(9,minmax(70px,1fr))}
+}
+
 </style>
 </head>
 <body>
