@@ -22,11 +22,10 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android platform and build tools
-        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
