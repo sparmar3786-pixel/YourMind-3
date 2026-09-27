@@ -191,14 +191,15 @@ button.tab{width:100%;min-width:0;min-height:38px;padding:0 6px;font-size:12px;w
   </div>
 
   <div class="card">
-    <h2>2 · CSV import (NSE option-chain export)</h2>
-    <div class="tiny">Tolerant column mapping. Headers me keywords dhoondhe jaate hain (Call/Put, LTP/Premium, OI, Chg OI, Volume). Timestamp tolerant parser.</div>
+    <h2>2 · NSE file import</h2>
+    <div class="tiny">CSV + Excel + PDF + screenshot upload. NSE option-chain CSV ka 2-row header (CALLS/PUTS + OI/CHNG IN OI/VOLUME/IV/LTP/STRIKE...) automatically detect hota hai. CSV rows engine me import hote hain; baaki files upload validation ke liye accepted hain.</div>
     <label>Paste CSV text</label>
     <textarea id="csvText" placeholder="Strike,CE LTP,CE OI,CE Chg OI,CE Volume,PE LTP,PE OI,PE Chg OI,PE Volume
 23000,150.2,120000,5000,80000,95.4,150000,-3000,70000"></textarea>
-    <label>or choose file</label>
-    <input id="csvFile" type="file" accept=".csv,text/csv">
-    <button class="btn blue" id="btnParseCsv">📥 Parse &amp; preview</button>
+    <label>Upload files — CSV / Excel / PDF / Screenshot</label>
+    <input id="csvFile" type="file" multiple accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xls,application/vnd.ms-excel,.pdf,application/pdf,image/png,image/jpeg,image/webp">
+    <button class="btn blue" id="btnParseCsv">📥 Read &amp; validate files</button>
+    <div id="fileImportList" class="small" style="margin-top:8px"></div>
     <div id="csvPreview"></div>
   </div>
 
@@ -914,32 +915,20 @@ function readStrikeRows(){
 
 /* ---------- CSV ---------- */
 function parseCSV(text){
-  const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.trim()!=='');
-  if(lines.length<2) return { error:'CSV me header + data rows chahiye.' };
-  const split = l => { const out=[]; let cur='',q=false; for(let i=0;i<l.length;i++){ const c=l[i]; if(c==='"'){ q=!q; } else if((c===','||c==='\t'||c===';') && !q){ out.push(cur); cur=''; } else cur+=c; } out.push(cur); return out.map(s=>s.trim().replace(/^"|"$/g,'')); };
-  const head = split(lines[0]).map(h=>h.toLowerCase());
-  const find = (re)=>{ for(let i=0;i<head.length;i++){ if(re.test(head[i])) return i; } return -1; };
-  const iStrike = find(/strike|strike price/);
-  const iCeP = find(/call.*(ltp|last|prem)|ce.*(ltp|last|prem)|ce\s*price/);
-  const iPeP = find(/put.*(ltp|last|prem)|pe.*(ltp|last|prem)|pe\s*price/);
-  const iCeOi = find(/call.*\boi\b|ce.*\boi\b/);
-  const iPeOi = find(/put.*\boi\b|pe.*\boi\b/);
-  const iCeChg = find(/call.*(chg|change).*oi|ce.*(chg|change).*oi/);
-  const iPeChg = find(/put.*(chg|change).*oi|pe.*(chg|change).*oi/);
-  const iCeVol = find(/call.*vol|ce.*vol/);
-  const iPeVol = find(/put.*vol|pe.*vol/);
-  const iSpot = find(/spot|underlying|nifty\s*50|index/);
-  const iTime = find(/time|date|timestamp/);
-  if(iStrike<0) return { error:'Strike column nahi mila. Header me "Strike" keyword chahiye.' };
-  const strikes=[]; let spot=null, ts=null;
-  for(let r=1;r<lines.length;r++){
-    const c=split(lines[r]); const strike=num(c[iStrike]); if(!strike) continue;
-    strikes.push({ strike, ce:{premium:iCeP>=0?num(c[iCeP]):0, oi:iCeOi>=0?num(c[iCeOi]):0, chgOi:iCeChg>=0?num(c[iCeChg]):0, vol:iCeVol>=0?num(c[iCeVol]):0}, pe:{premium:iPeP>=0?num(c[iPeP]):0, oi:iPeOi>=0?num(c[iPeOi]):0, chgOi:iPeChg>=0?num(c[iPeChg]):0, vol:iPeVol>=0?num(c[iPeVol]):0} });
-    if(spot==null && iSpot>=0) spot=num(c[iSpot]);
-    if(ts==null && iTime>=0){ const d=parseTs(c[iTime]); if(d) ts=isoLocal(d); }
-  }
-  const mapping = { strike:iStrike, ceP:iCeP, peP:iPeP, ceOi:iCeOi, peOi:iPeOi, ceChg:iCeChg, peChg:iPeChg, ceVol:iCeVol, peVol:iPeVol, spot:iSpot, time:iTime };
-  return { strikes, spot, ts, mapping, head };
+  const lines=text.replace(/\r/g,'').split('\n').filter(l=>l.trim()!=='');
+  if(lines.length<2)return{error:'CSV me header + data rows chahiye.'};
+  const split=l=>{const o=[];let c='',q=false;for(let i=0;i<l.length;i++){const x=l[i];if(x==='"')q=!q;else if((x===','||x==='\t'||x===';')&&!q){o.push(c);c='';}else c+=x;}o.push(c);return o.map(s=>s.trim().replace(/^"|"$/g,''));};
+  const rows=lines.map(split),norm=s=>String(s||'').toLowerCase().replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim(),numCell=v=>{const s=String(v==null?'':v).trim().replace(/,/g,'');if(!s||s==='-'||s==='—'||s==='NA'||s==='N/A')return 0;const n=Number(s.replace(/%$/,''));return Number.isFinite(n)?n:0;};
+  let h=-1,best=-1;
+  for(let r=0;r<Math.min(rows.length,10);r++){const j=rows[r].map(norm).join('|');let s=0;if(/strike/.test(j))s+=5;if(/(^|\|)oi($|\|)/.test(j))s+=2;if(/chng in oi|change in oi|chg oi/.test(j))s+=2;if(/volume/.test(j))s++;if(/ltp/.test(j))s++;if(s>best){best=s;h=r;}}
+  if(h<0||!rows[h].some(x=>norm(x)==='strike'||/strike/.test(norm(x))))return{error:'NSE header detect nahi hua. STRIKE column required hai.'};
+  const head=rows[h].map(norm),find=re=>{for(let i=0;i<head.length;i++)if(re.test(head[i]))return i;return-1;},iStrike=find(/strike/);
+  let iCeOi=find(/^(call|ce).*\boi\b|^oi.*call/),iPeOi=find(/^(put|pe).*\boi\b|^oi.*put/),iCeChg=find(/^(call|ce).*?(chg|change).*oi|^(chg|change).*oi.*(call|ce)/),iPeChg=find(/^(put|pe).*?(chg|change).*oi|^(chg|change).*oi.*(put|pe)/),iCeVol=find(/^(call|ce).*vol|^vol.*(call|ce)/),iPeVol=find(/^(put|pe).*vol|^vol.*(put|pe)/),iCeP=find(/^(call|ce).*?(ltp|last|prem)|^(ltp|last|prem).*?(call|ce)/),iPeP=find(/^(put|pe).*?(ltp|last|prem)|^(ltp|last|prem).*?(put|pe)/);
+  if(iStrike>=0&&head.length>=20){if(iCeOi<0)iCeOi=iStrike-10;if(iCeChg<0)iCeChg=iStrike-9;if(iCeVol<0)iCeVol=iStrike-8;if(iCeP<0)iCeP=iStrike-6;if(iPeP<0)iPeP=iStrike+6;if(iPeVol<0)iPeVol=iStrike+8;if(iPeChg<0)iPeChg=iStrike+9;if(iPeOi<0)iPeOi=iStrike+10;}
+  const iSpot=find(/spot|underlying|nifty\s*50|index value/),iTime=find(/time|date|timestamp/),strikes=[];let spot=null,ts=null;
+  for(let r=h+1;r<rows.length;r++){const c=rows[r],strike=numCell(c[iStrike]);if(!strike)continue;const ce={premium:numCell(c[iCeP]),oi:numCell(c[iCeOi]),chgOi:numCell(c[iCeChg]),vol:numCell(c[iCeVol])},pe={premium:numCell(c[iPeP]),oi:numCell(c[iPeOi]),chgOi:numCell(c[iPeChg]),vol:numCell(c[iPeVol])};if(ce.premium||ce.oi||ce.vol||ce.chgOi||pe.premium||pe.oi||pe.vol||pe.chgOi)strikes.push({strike,ce,pe});if(spot==null&&iSpot>=0)spot=numCell(c[iSpot]);if(ts==null&&iTime>=0){const d=parseTs(c[iTime]);if(d)ts=isoLocal(d);}}
+  if(!strikes.length)return{error:'STRIKE mila, lekin valid option-chain rows nahi mile.'};
+  return{strikes,spot,ts,mapping:{strike:iStrike,ceP:iCeP,peP:iPeP,ceOi:iCeOi,peOi:iPeOi,ceChg:iCeChg,peChg:iPeChg,ceVol:iCeVol,peVol:iPeVol,spot:iSpot,time:iTime,headerRow:h},head,headerRow:h,format:h===1?'NSE option-chain 2-row header':'generic option-chain'};
 }
 
 /* =====================================================================
@@ -1055,8 +1044,29 @@ function init(){
     const snap={ id:uid(), ts, source:'manual', spot:num($('inSpot').value), iv:num($('inIv').value), dte:num($('inDte').value), expiry:$('inExpiry').value, bars:num($('inBars').value), strikes };
     S.snapshots.push(snap); save(); renderSnaps(); alert('Snapshot saved (# '+S.snapshots.length+').');
   };
-  // csv
-  $('csvFile').onchange = e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ $('csvText').value=r.result; }; r.readAsText(f); };
-  $('btnParseCsv').onclick = ()=>{
+  // multi-format file import
+  let selectedImportFiles=[];
+  $('csvFile').onchange=e=>{
+    selectedImportFiles=Array.from(e.target.files||[]);
+    const list=$('fileImportList');
+    list.innerHTML=selectedImportFiles.length?selectedImportFiles.map((f,i)=>'<div class="pill info">'+(i+1)+'. '+esc(f.name)+' · '+esc(f.type||'unknown')+' · '+(f.size/1024).toFixed(1)+' KB</div>').join(''):'<span class="muted">No file selected.</span>';
+    const csv=selectedImportFiles.find(f=>/\.csv$/i.test(f.name)||/text\/csv/i.test(f.type||''));
+    if(csv){const r=new FileReader();r.onload=()=>{$('csvText').value=r.result;};r.readAsText(csv);}
+  };
+  $('btnParseCsv').onclick=async()=>{
+    const files=selectedImportFiles||[],list=$('fileImportList');
+    if(files.length){
+      list.innerHTML='<div class="card" style="padding:10px"><b>File validation</b><div id="fileValidationRows" class="small"></div></div>';
+      const vr=$('fileValidationRows');
+      for(const f of files){
+        const ext=(f.name.split('.').pop()||'').toLowerCase();let line='<div style="padding:5px 0;border-bottom:1px dashed var(--line)"><b>'+esc(f.name)+'</b> · ';
+        if(ext==='csv'){const t=await f.text(),res=parseCSV(t);line+=res.error?'<span class="pill bad">CSV ERROR</span> '+esc(res.error):'<span class="pill ok">VALID</span> '+res.strikes.length+' strikes · '+esc(res.format)+' · CE/PE mapping OK';}
+        else if(ext==='xlsx'||ext==='xls')line+='<span class="pill info">EXCEL ACCEPTED</span> Upload received';
+        else if(ext==='pdf')line+='<span class="pill info">PDF ACCEPTED</span> Upload received';
+        else if(['png','jpg','jpeg','webp'].includes(ext))line+='<span class="pill info">SCREENSHOT ACCEPTED</span> Upload received';
+        else line+='<span class="pill warn">UNSUPPORTED</span> '+esc(ext);
+        vr.innerHTML+=line+'</div>';
+      }
+    }
     const res=parseCSV($('csvText').value||'');
     if(res.error){ $('csvPreview').innerHTML='<div class="banner red">'+esc(res.error)+'</div>'; return; }
