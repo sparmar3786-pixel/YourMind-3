@@ -8,6 +8,8 @@ import android.webkit.*;
 import android.net.Uri;
 import android.content.Intent;
 import android.util.Base64;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import androidx.webkit.WebViewAssetLoader;
 import org.json.JSONObject;
 import java.io.*;
@@ -139,6 +141,10 @@ public class MainActivity extends Activity {
         private volatile String clientCode = "";
         private volatile String apiKey = "";
 
+        @JavascriptInterface public String generateTotp(final String secret) {
+            try { return totp(secret); } catch (Exception e) { return ""; }
+        }
+
         @JavascriptInterface public void login(final String client, final String pin,
                                                final String totp, final String key) {
             if (client == null || pin == null || totp == null || key == null ||
@@ -258,6 +264,41 @@ public class MainActivity extends Activity {
 
         private String state(String v) {
             return v == null || v.isEmpty() ? "NO" : "READY";
+        }
+
+        private String totp(String secret) throws Exception {
+            String s = secret == null ? "" : secret.replace(" ", "").replace("-", "").trim().toUpperCase();
+            if (s.isEmpty()) return "";
+            byte[] key = base32Decode(s);
+            long counter = System.currentTimeMillis() / 1000L / 30L;
+            byte[] msg = new byte[8];
+            for (int i = 7; i >= 0; i--) { msg[i] = (byte)(counter & 0xff); counter >>= 8; }
+            Mac mac = Mac.getInstance("HmacSHA1");
+            mac.init(new SecretKeySpec(key, "HmacSHA1"));
+            byte[] h = mac.doFinal(msg);
+            int off = h[h.length - 1] & 0x0f;
+            int bin = ((h[off] & 0x7f) << 24) | ((h[off + 1] & 0xff) << 16) |
+                      ((h[off + 2] & 0xff) << 8) | (h[off + 3] & 0xff);
+            return String.format(java.util.Locale.US, "%06d", bin % 1000000);
+        }
+
+        private byte[] base32Decode(String input) {
+            String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            int buffer = 0, bits = 0;
+            for (int i = 0; i < input.length(); i++) {
+                char ch = input.charAt(i);
+                if (ch == '=') break;
+                int val = alphabet.indexOf(ch);
+                if (val < 0) throw new IllegalArgumentException("Invalid TOTP secret");
+                buffer = (buffer << 5) | val;
+                bits += 5;
+                if (bits >= 8) {
+                    bits -= 8;
+                    out.write((buffer >> bits) & 0xff);
+                }
+            }
+            return out.toByteArray();
         }
     }
 
