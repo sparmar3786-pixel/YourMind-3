@@ -6,7 +6,7 @@
 </style></head><body>
 <header><div class="row"><h1>NSE Algo Signal</h1><span id="market" class="pill ok">IST --</span></div><div class="muted">Groww Live Data + Option Chain + CSV Backtest</div></header>
 <main class="wrap">
-<div class="tabs"><button id="tbDash" class="on" onclick="tab('dash')">Dashboard</button><button id="tbNse" onclick="tab('nse')">NSE Direct Live</button><button id="tbBack" onclick="tab('back')">Backtest</button><button id="tbGroww" onclick="tab('groww')">Groww API</button></div>
+<div class="tabs"><button id="tbDash" class="on" onclick="tab('dash')">Dashboard</button><button id="tbNse" onclick="tab('nse')">NSE Direct Live</button><button id="tbMcp" onclick="tab('mcp')">NSE MCP</button><button id="tbBack" onclick="tab('back')">Backtest</button><button id="tbGroww" onclick="tab('groww')">Groww API</button></div>
 
 <section id="dash" class="page on">
 <div class="card"><div class="row"><b>NIFTY</b><span class="pill">5 MIN</span></div><div id="signal" class="big ok">WAITING FOR LIVE DATA</div><p class="muted">No signal is generated until real market data is confirmed.</p>
@@ -33,6 +33,21 @@
 <div class="card"><b>Important</b><p class="small muted">NSE's current real-time product is delivered as a licensed feed (including leased-line multicast) or through an authorized data vendor. Snapshot/EOD products use separate delivery mechanisms. A normal public HTTP URL cannot be treated as the NSE real-time feed.</p></div>
 </section>
 
+<section id="mcp" class="page">
+<div class="card"><div class="row"><h2 style="margin:0">NSE Free MCP</h2><span id="mcpBadge" class="pill warn">NOT CONNECTED</span></div>
+<p class="muted small">Official NSE MCP connection. No NSE credentials are stored in this APK. NSE currently describes CM Market Live as approximately 1–3 minutes behind real-time and for educational/informational, non-commercial use.</p>
+<input id="mcpUrl" class="input" value="https://mcp.nseindia.in/cmmkt/mcp" placeholder="NSE MCP URL">
+<button class="btn" onclick="nseMcpConnect()">CONNECT NSE MCP</button>
+<button class="btn" onclick="nseMcpTools()">LIST MCP TOOLS</button>
+<div id="mcpStatus" class="small muted">Not connected.</div>
+<div class="metric" style="margin-top:8px">Available tools<b id="mcpToolCount">0</b></div>
+<select id="mcpTool" class="input"><option value="">Connect first</option></select>
+<textarea id="mcpArgs" class="input" style="min-height:100px" placeholder='Tool arguments JSON, e.g. {"symbol":"NIFTY"}'></textarea>
+<button class="btn" onclick="nseMcpCall()">CALL SELECTED TOOL</button>
+<pre id="mcpResult" class="small" style="white-space:pre-wrap;overflow:auto;max-height:320px"></pre>
+</div>
+<div class="card"><b>Data policy</b><p class="small muted">This MCP integration is separate from the licensed NSE F&O real-time feed. It does not claim zero-delay F&O data and does not bypass NSE licensing.</p></div>
+</section>
 <section id="back" class="page">
 <div class="card"><h2>CSV Snapshot Backtest</h2><p class="muted small">Chronological snapshots only. The engine uses premium and OI changes and checks the next snapshot. It supports CE and PE and classifies long buildup, short covering, short/writing pressure and long unwinding. It never fabricates missing data.</p>
 <label class="file">＋ Add NSE CSV snapshot<input id="csvFiles" type="file" accept=".csv,text/csv" multiple hidden></label>
@@ -85,7 +100,48 @@ function handleNseTick(raw){
  document.getElementById('nseRtStatus').textContent='Verified tick received • local 5-minute candle building • '+new Date(ts).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'});
 }
 
-function tab(x){document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(x).classList.add('on');document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));document.getElementById(x==='dash'?'tbDash':x==='nse'?'tbNse':x==='back'?'tbBack':'tbGroww').classList.add('on')}
+
+let mcpSessionId=null,mcpId=100,mcpTools=[];
+async function mcpRequest(method,params){
+ const u=document.getElementById('mcpUrl').value.trim();
+ const h={'Content-Type':'application/json','Accept':'application/json, text/event-stream'};
+ if(mcpSessionId)h['Mcp-Session-Id']=mcpSessionId;
+ const r=await fetch(u,{method:'POST',headers:h,body:JSON.stringify({jsonrpc:'2.0',id:++mcpId,method,params:params||{}})});
+ const sid=r.headers.get('Mcp-Session-Id'); if(sid)mcpSessionId=sid;
+ const txt=await r.text();
+ const lines=txt.split(/\r?\n/).filter(x=>x.startsWith('data:')).map(x=>x.slice(5).trim()).filter(Boolean);
+ try{return JSON.parse(lines[lines.length-1]||txt)}catch(e){return {raw:txt,status:r.status}}
+}
+async function nseMcpConnect(){
+ try{
+  document.getElementById('mcpBadge').textContent='CONNECTING...';
+  let r=await mcpRequest('initialize',{protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:'NSE-Algo-Signal',version:'1.0'}});
+  if(r.error)throw new Error(r.error.message||'initialize failed');
+  try{await mcpRequest('notifications/initialized',{})}catch(e){}
+  document.getElementById('mcpBadge').textContent='CONNECTED';
+  document.getElementById('mcpStatus').textContent='Official NSE MCP connected. Loading tools...';
+  await nseMcpTools();
+ }catch(e){document.getElementById('mcpBadge').textContent='ERROR';document.getElementById('mcpStatus').textContent='MCP connection failed: '+e.message+' (WebView/network/CORS may block direct access).'}
+}
+async function nseMcpTools(){
+ try{
+  if(!mcpSessionId)await nseMcpConnect();
+  let r=await mcpRequest('tools/list',{});
+  if(r.error)throw new Error(r.error.message||'tools/list failed');
+  mcpTools=(r.result&&r.result.tools)||[];
+  let s=document.getElementById('mcpTool');s.innerHTML='';
+  mcpTools.forEach((t,i)=>{let o=document.createElement('option');o.value=String(i);o.textContent=t.name+(t.description?' — '+t.description.slice(0,90):'');s.appendChild(o)});
+  document.getElementById('mcpToolCount').textContent=mcpTools.length;
+  document.getElementById('mcpStatus').textContent='Tools loaded successfully.';
+ }catch(e){document.getElementById('mcpStatus').textContent='Tool discovery failed: '+e.message}
+}
+async function nseMcpCall(){
+ const i=Number(document.getElementById('mcpTool').value),t=mcpTools[i];if(!t)return;
+ let args={};try{args=JSON.parse(document.getElementById('mcpArgs').value||'{}')}catch(e){document.getElementById('mcpResult').textContent='Invalid JSON arguments.';return}
+ try{let r=await mcpRequest('tools/call',{name:t.name,arguments:args});document.getElementById('mcpResult').textContent=JSON.stringify(r,null,2)}catch(e){document.getElementById('mcpResult').textContent='Tool call failed: '+e.message}
+}
+
+function tab(x){document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(x).classList.add('on');document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));document.getElementById(x==='dash'?'tbDash':x==='nse'?'tbNse':x==='mcp'?'tbMcp':x==='back'?'tbBack':'tbGroww').classList.add('on')}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function num(v){let n=parseFloat(String(v??'').replace(/,/g,''));return Number.isFinite(n)?n:null}
 function csvCells(line){let a=[],cur='',q=false;for(let i=0;i<line.length;i++){let c=line[i];if(c==='"'){if(q&&line[i+1]==='"'){cur+='"';i++;}else q=!q}else if(c===','&&!q){a.push(cur.trim());cur=''}else cur+=c}a.push(cur.trim());return a}
