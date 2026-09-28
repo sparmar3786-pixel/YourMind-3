@@ -93,25 +93,41 @@ public class MainActivity extends Activity {
 
 
     public class NseMcpBridge {
-        private String sessionId = null;
+        private volatile String sessionId = null;
+        private static final String MCP_VERSION = "2025-06-18";
 
         @JavascriptInterface public void connect(final String url) {
-            mcpRequest(url, "initialize",
-                "{\\"protocolVersion\\":\\"2025-06-18\\",\\"capabilities\\":{},\\"clientInfo\\":{\\"name\\":\\"NSE-Algo-Signal\\",\\"version\\":\\"1.0\\"}}",
-                true);
+            try {
+                JSONObject p = new JSONObject();
+                p.put("protocolVersion", MCP_VERSION);
+                p.put("capabilities", new JSONObject());
+                JSONObject client = new JSONObject();
+                client.put("name", "NSE-Algo-Signal");
+                client.put("version", "1.0");
+                p.put("clientInfo", client);
+                mcpRequest(url, "initialize", p, true);
+            } catch(Exception ex) {
+                postMcp(false, "initialize", 0, ex.getMessage(), sessionId);
+            }
         }
 
         @JavascriptInterface public void listTools(final String url) {
-            mcpRequest(url, "tools/list", "{}", false);
+            mcpRequest(url, "tools/list", new JSONObject(), false);
         }
 
         @JavascriptInterface public void callTool(final String url, final String name, final String argsJson) {
-            String args = argsJson == null || argsJson.trim().isEmpty() ? "{}" : argsJson;
-            String params = "{\\"name\\":"+JSONObject.quote(name)+",\\"arguments\\":"+args+"}";
-            mcpRequest(url, "tools/call", params, false);
+            try {
+                JSONObject p = new JSONObject();
+                p.put("name", name);
+                JSONObject args = new JSONObject(argsJson == null || argsJson.trim().isEmpty() ? "{}" : argsJson);
+                p.put("arguments", args);
+                mcpRequest(url, "tools/call", p, false);
+            } catch(Exception ex) {
+                postMcp(false, "tools/call", 0, "Invalid tool arguments: " + ex.getMessage(), sessionId);
+            }
         }
 
-        private void mcpRequest(final String url, final String method, final String params, final boolean init) {
+        private void mcpRequest(final String url, final String method, final JSONObject params, final boolean init) {
             net.execute(() -> {
                 HttpURLConnection c=null;
                 try {
@@ -122,48 +138,70 @@ public class MainActivity extends Activity {
                     c.setDoOutput(true);
                     c.setRequestProperty("Content-Type","application/json");
                     c.setRequestProperty("Accept","application/json, text/event-stream");
+                    c.setRequestProperty("MCP-Protocol-Version",MCP_VERSION);
                     c.setRequestProperty("User-Agent","NSE-Algo-Signal-Android/1.0");
                     if(sessionId!=null && !init) c.setRequestProperty("Mcp-Session-Id",sessionId);
-                    String body="{\\"jsonrpc\\":\\"2.0\\",\\"id\\":"+System.currentTimeMillis()+",\\"method\\":"+JSONObject.quote(method)+",\\"params\\":"+params+"}";
+
+                    JSONObject req=new JSONObject();
+                    req.put("jsonrpc","2.0");
+                    req.put("id",System.currentTimeMillis());
+                    req.put("method",method);
+                    req.put("params",params);
+
                     OutputStream os=c.getOutputStream();
-                    os.write(body.getBytes("UTF-8")); os.flush(); os.close();
+                    os.write(req.toString().getBytes("UTF-8"));
+                    os.flush(); os.close();
+
                     int code=c.getResponseCode();
                     String sid=c.getHeaderField("Mcp-Session-Id");
                     if(sid!=null && !sid.isEmpty()) sessionId=sid;
+
                     InputStream is=code>=200&&code<400?c.getInputStream():c.getErrorStream();
                     String response=read(is);
-                    if(init && code>=200&&code<300) {
-                        // MCP initialization is followed by initialized notification.
-                        sendMcpNotification(url);
+
+                    if(init && code>=200 && code<300) {
+                        sendInitialized(url);
                     }
                     postMcp(code>=200&&code<300, method, code, response, sessionId);
-                } catch(Exception e) {
-                    postMcp(false, method, 0, e.getClass().getSimpleName()+": "+e.getMessage(), sessionId);
-                } finally { if(c!=null)c.disconnect(); }
+                } catch(Exception ex) {
+                    postMcp(false, method, 0, ex.getClass().getSimpleName()+": "+ex.getMessage(), sessionId);
+                } finally {
+                    if(c!=null)c.disconnect();
+                }
             });
         }
 
-        private void sendMcpNotification(final String url) {
+        private void sendInitialized(final String url) {
             HttpURLConnection c=null;
             try {
                 c=(HttpURLConnection)new URL(url).openConnection();
                 c.setRequestMethod("POST");
-                c.setConnectTimeout(10000); c.setReadTimeout(10000); c.setDoOutput(true);
+                c.setConnectTimeout(10000);
+                c.setReadTimeout(10000);
+                c.setDoOutput(true);
                 c.setRequestProperty("Content-Type","application/json");
                 c.setRequestProperty("Accept","application/json, text/event-stream");
+                c.setRequestProperty("MCP-Protocol-Version",MCP_VERSION);
                 c.setRequestProperty("User-Agent","NSE-Algo-Signal-Android/1.0");
                 if(sessionId!=null)c.setRequestProperty("Mcp-Session-Id",sessionId);
-                String body="{\\"jsonrpc\\":\\"2.0\\",\\"method\\":\\"notifications/initialized\\"}";
-                OutputStream os=c.getOutputStream(); os.write(body.getBytes("UTF-8")); os.flush(); os.close();
+                JSONObject req=new JSONObject();
+                req.put("jsonrpc","2.0");
+                req.put("method","notifications/initialized");
+                OutputStream os=c.getOutputStream();
+                os.write(req.toString().getBytes("UTF-8"));
+                os.flush(); os.close();
                 c.getResponseCode();
-            } catch(Exception ignored) {} finally { if(c!=null)c.disconnect(); }
+            } catch(Exception ignored) {
+            } finally {
+                if(c!=null)c.disconnect();
+            }
         }
 
         private void postMcp(final boolean ok, final String method, final int code, final String raw, final String sid) {
             runOnUiThread(() -> {
-                String safe=(raw==null?"":raw).replace("\\\\","\\\\\\\\").replace("'","\\\\'");
-                String safeSid=(sid==null?"":sid).replace("\\\\","\\\\\\\\").replace("'","\\\\'");
-                w.evaluateJavascript("window.nseMcpNativeResult("+ok+",'"+method+"',"+code+",'"+safe+"','"+safeSid+"')",null);
+                String safe=JSONObject.quote(raw==null?"":raw);
+                String safeSid=JSONObject.quote(sid==null?"":sid);
+                w.evaluateJavascript("window.nseMcpNativeResult("+ok+",'"+method+"',"+code+","+safe+","+safeSid+")",null);
             });
         }
     }
