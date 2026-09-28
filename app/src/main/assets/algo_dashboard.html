@@ -40,10 +40,10 @@ header{position:sticky;top:0;z-index:20;background:rgba(6,10,16,.94);backdrop-fi
 <input id="totpSecret" class="input" type="password" autocomplete="off" placeholder="TOTP Secret / Authenticator Key">
 <div class="row" style="margin-top:6px"><div class="metric" style="flex:1"><span>AUTO TOTP</span><b id="totpCode">------</b></div><span id="totpTimer" class="badge">--s</span></div>
 <input id="apiKey" class="input" type="password" autocomplete="off" placeholder="SmartAPI Private API Key">
-<div class="grid"><input id="publicIp" class="input" placeholder="Registered Public IP (optional)"><input id="mac" class="input" placeholder="Registered MAC Address (optional)"></div>
+<div class="grid"><input id="publicIp" class="input" placeholder="Registered Public IP *"><input id="mac" class="input" placeholder="Device / Network MAC Address *"></div>
 <button class="btn primary" onclick="angelLogin()">GENERATE TOTP & SECURE LOGIN</button>
 <button class="btn" onclick="angelPublisher()">LOGIN VIA ANGEL ONE SMARTAPI</button>
-<div class="status small">Direct login uses the SmartAPI 2FA API. If Angel One rejects the request at the network/IP layer, use the SmartAPI login button and return through the configured callback.</div>
+<div class="status small">Direct login sends the complete SmartAPI header set, including your real local/public IP and MAC. Do not use 0.0.0.0 or a dummy MAC. If the gateway still returns Request Rejected, the rejection is at Angel One WAF/API gateway level.</div>
 <button class="btn" onclick="angelProfile()">VERIFY PROFILE / API ACCESS</button>
 <button class="btn" onclick="angelFeed()">CHECK FEED TOKEN</button>
 <button class="btn" onclick="loadLive()">START LIVE OPTION CHAIN</button>
