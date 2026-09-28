@@ -18,6 +18,7 @@ import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.*;
 import okhttp3.*;
 
@@ -429,6 +430,32 @@ public class MainActivity extends Activity {
             apiKey = "";
         }
 
+        private void setAngelHeaders(HttpURLConnection c, String key, String publicIp, String localIp, String mac) {
+            c.setRequestProperty("Content-Type","application/json");
+            c.setRequestProperty("Accept","application/json");
+            c.setRequestProperty("X-UserType","USER");
+            c.setRequestProperty("X-SourceID","WEB");
+            c.setRequestProperty("X-ClientLocalIP",empty(localIp)?detectLocalIp():localIp.trim());
+            c.setRequestProperty("X-ClientPublicIP",empty(publicIp)?"0.0.0.0":publicIp.trim());
+            c.setRequestProperty("X-MACAddress",empty(mac)?"00:00:00:00:00:00":mac.trim());
+            c.setRequestProperty("X-PrivateKey",key);
+        }
+        private String detectLocalIp(){
+            try{
+                Enumeration<NetworkInterface> en=NetworkInterface.getNetworkInterfaces();
+                while(en.hasMoreElements()){
+                    NetworkInterface ni=en.nextElement();
+                    Enumeration<InetAddress> ae=ni.getInetAddresses();
+                    while(ae.hasMoreElements()){
+                        InetAddress a=ae.nextElement();
+                        if(!a.isLoopbackAddress() && a instanceof Inet4Address)return a.getHostAddress();
+                    }
+                }
+            }catch(Exception ignored){}
+            return "127.0.0.1";
+        }
+        private boolean empty(String s){return s==null||s.trim().isEmpty();}
+
         private void setAngelHeaders(HttpURLConnection c, String key) {
             c.setRequestProperty("Content-Type", "application/json");
             c.setRequestProperty("Accept", "application/json");
@@ -477,6 +504,18 @@ public class MainActivity extends Activity {
                 }
             }
             return out.toByteArray();
+        }
+    }
+
+    static class LiveRow {
+        String token="",symbol="",type="",expiry="";
+        double strike,ltp,priceDelta; long oi,oiDelta,volume;
+        String toJson(){
+            JSONObject o=new JSONObject();
+            try{o.put("token",token);o.put("symbol",symbol);o.put("type",type);o.put("expiry",expiry);
+                o.put("strike",strike);o.put("ltp",ltp);o.put("oi",oi);o.put("oiDelta",oiDelta);
+                o.put("priceDelta",priceDelta);o.put("volume",volume);}catch(Exception ignored){}
+            return o.toString();
         }
     }
 
@@ -666,6 +705,14 @@ public class MainActivity extends Activity {
         runOnUiThread(() -> {
             String safe = msg == null ? "" : msg.replace("\\","\\\\").replace("'","\\'");
             w.evaluateJavascript("window.angelResult("+ok+",'"+safe+"')",null);
+        });
+    }
+
+    private void postMarket(final boolean ok, final String type, final String msg) {
+        runOnUiThread(() -> {
+            if(w==null)return;
+            String s=msg==null?"":msg.replace("\\","\\\\").replace("'","\\'");
+            w.evaluateJavascript("window.angelMarketStatus&&window.angelMarketStatus("+ok+","+JSONObject.quote(type)+",'"+s+"')",null);
         });
     }
 
