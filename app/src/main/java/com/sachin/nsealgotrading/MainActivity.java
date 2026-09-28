@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.webkit.*;
 import android.net.Uri;
 import android.content.Intent;
-import android.net.Uri;
 import androidx.webkit.WebViewAssetLoader;
 import org.json.JSONObject;
 import java.io.*;
@@ -16,7 +15,9 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
     WebView w;
+    ValueCallback<Uri[]> fileCallback;
     ExecutorService net = Executors.newSingleThreadExecutor();
+    static final int FILE_PICKER = 4101;
 
     @Override public void onCreate(Bundle b) {
         super.onCreate(b);
@@ -26,6 +27,7 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false);
         s.setAllowContentAccess(false);
+
         WebViewAssetLoader l = new WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
 
@@ -34,10 +36,36 @@ public class MainActivity extends Activity {
                 return l.shouldInterceptRequest(Uri.parse(u));
             }
         });
-        w.setWebChromeClient(new WebChromeClient());
+        w.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (fileCallback != null) fileCallback.onReceiveValue(null);
+                fileCallback = callback;
+                Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("text/csv");
+                i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                startActivityForResult(i, FILE_PICKER);
+                return true;
+            }
+        });
         w.addJavascriptInterface(new GrowwBridge(), "AndroidGroww");
         setContentView(w);
         w.loadUrl("https://appassets.androidplatform.net/assets/algo_dashboard.html");
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != FILE_PICKER || fileCallback == null) return;
+        Uri[] results = null;
+        if (resultCode == RESULT_OK && data != null) {
+            if (data.getClipData() != null) {
+                int n = data.getClipData().getItemCount();
+                results = new Uri[n];
+                for (int i=0;i<n;i++) results[i] = data.getClipData().getItemAt(i).getUri();
+            } else if (data.getData() != null) results = new Uri[]{data.getData()};
+        }
+        fileCallback.onReceiveValue(results);
+        fileCallback = null;
     }
 
     public class GrowwBridge {
@@ -50,64 +78,45 @@ public class MainActivity extends Activity {
     }
 
     private void request(final String token, final String url, final String label) {
-        if (token == null || token.trim().isEmpty()) {
-            post(false, label + ": token required");
-            return;
-        }
+        if (token == null || token.trim().isEmpty()) { post(false, label + ": token required"); return; }
         net.execute(() -> {
             HttpURLConnection c = null;
             try {
-                URL u = new URL(url);
-                c = (HttpURLConnection) u.openConnection();
+                c = (HttpURLConnection)new URL(url).openConnection();
                 c.setRequestMethod("GET");
                 c.setConnectTimeout(10000);
                 c.setReadTimeout(10000);
-                c.setRequestProperty("Accept", "application/json");
-                c.setRequestProperty("Authorization", "Bearer " + token.trim());
-                c.setRequestProperty("X-API-VERSION", "1.0");
-                int code = c.getResponseCode();
-                InputStream is = code >= 200 && code < 400 ? c.getInputStream() : c.getErrorStream();
-                String body = read(is);
-                String status = "HTTP " + code;
-                try {
-                    JSONObject o = new JSONObject(body);
-                    String apiStatus = o.optString("status", "");
-                    if (!apiStatus.isEmpty()) status += " • " + apiStatus;
-                } catch (Exception ignored) {}
-                boolean ok = code >= 200 && code < 300;
-                String msg = label + ": " + status + (ok ? " • connection OK" : " • request rejected");
-                post(ok, msg);
-            } catch (Exception e) {
-                post(false, label + ": connection error • " + e.getClass().getSimpleName());
-            } finally {
-                if (c != null) c.disconnect();
-            }
+                c.setRequestProperty("Accept","application/json");
+                c.setRequestProperty("Authorization","Bearer "+token.trim());
+                c.setRequestProperty("X-API-VERSION","1.0");
+                int code=c.getResponseCode();
+                InputStream is=code>=200&&code<400?c.getInputStream():c.getErrorStream();
+                String body=read(is);
+                String status="HTTP "+code;
+                try { JSONObject o=new JSONObject(body); String s=o.optString("status",""); if(!s.isEmpty()) status+=" • "+s; } catch(Exception ignored){}
+                boolean ok=code>=200&&code<300;
+                post(ok,label+": "+status+(ok?" • connection OK":" • request rejected"));
+            } catch(Exception e) {
+                post(false,label+": connection error • "+e.getClass().getSimpleName());
+            } finally { if(c!=null)c.disconnect(); }
         });
     }
 
-    private String read(InputStream is) throws IOException {
-        if (is == null) return "";
-        BufferedReader r = new BufferedReader(new InputStreamReader(is));
-        StringBuilder b = new StringBuilder();
-        String line;
-        while ((line = r.readLine()) != null) b.append(line);
-        r.close();
-        return b.toString();
+    private String read(InputStream is)throws IOException{
+        if(is==null)return "";
+        BufferedReader r=new BufferedReader(new InputStreamReader(is));
+        StringBuilder b=new StringBuilder(); String line;
+        while((line=r.readLine())!=null)b.append(line);
+        r.close(); return b.toString();
     }
 
-    private void post(final boolean ok, final String msg) {
-        runOnUiThread(() -> {
-            String safe = msg.replace("\\", "\\\\").replace("'", "\\'");
-            w.evaluateJavascript("window.growwResult(" + ok + ",'" + safe + "')", null);
+    private void post(final boolean ok, final String msg){
+        runOnUiThread(()->{
+            String safe=msg.replace("\\","\\\\").replace("'","\\'");
+            w.evaluateJavascript("window.growwResult("+ok+",'"+safe+"')",null);
         });
     }
 
-    @Override public void onDestroy() {
-        net.shutdownNow();
-        super.onDestroy();
-    }
-
-    @Override public void onBackPressed() {
-        if (w.canGoBack()) w.goBack(); else super.onBackPressed();
-    }
+    @Override public void onDestroy(){net.shutdownNow();super.onDestroy();}
+    @Override public void onBackPressed(){if(w.canGoBack())w.goBack();else super.onBackPressed();}
 }
