@@ -2,7 +2,7 @@ name: Build NSE Algo Signal APK
 on:
   workflow_dispatch:
   push:
-    branches: [ nse-algo-signal-fresh ]
+    branches: [ main, backtest-groww-api-test, nse-algo-signal-fresh ]
 permissions: { contents: read }
 jobs:
   build:
