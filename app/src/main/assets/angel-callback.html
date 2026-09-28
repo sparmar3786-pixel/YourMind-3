@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>NSE Algo Signal — Angel One Callback</title>
+<style>
+:root{color-scheme:dark;--card:#101b27;--line:#243548;--text:#eef5fb;--muted:#93a6b8;--accent:#19b5fe;--ok:#26d07c;--bad:#ff5d73}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(160deg,#061018,#0b1520 60%,#07111a);color:var(--text)}
+.card{width:min(440px,100%);background:rgba(16,27,39,.96);border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.logo{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#132a3b;border:1px solid #21465d;font-weight:800;color:var(--accent);margin-bottom:16px}
+h1{margin:0 0 8px;font-size:22px}p{color:var(--muted);line-height:1.5;margin:8px 0}.status{margin:18px 0;padding:14px;border-radius:14px;border:1px solid var(--line);background:#0b1621}.status.ok{border-color:rgba(38,208,124,.45)}.status.bad{border-color:rgba(255,93,115,.45)}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--accent);margin-right:8px}.ok .dot{background:var(--ok)}.bad .dot{background:var(--bad)}
+button{width:100%;border:0;border-radius:13px;padding:13px 16px;font-size:15px;font-weight:700;cursor:pointer;background:var(--accent);color:#041019;margin-top:8px}.secondary{background:#172535;color:var(--text);border:1px solid var(--line)}.small{font-size:12px}
+</style>
+</head>
+<body><main class="card"><div class="logo">NS</div><h1>NSE Algo Signal</h1><p>Angel One authentication callback</p>
+<section id="status" class="status"><span class="dot"></span><strong id="statusText">Processing callback…</strong><p id="message" class="small"></p></section>
+<button id="openApp" type="button">Return to NSE Algo Signal</button><button id="closePage" class="secondary" type="button">Close</button>
+<p class="small" style="margin-top:16px">No credentials are stored here. Callback parameters are forwarded to the app and removed from the visible URL.</p></main>
+<script>
+(function(){'use strict';
+const p=new URLSearchParams(location.search),h=new URLSearchParams(location.hash.replace(/^#/,''));
+const get=n=>p.get(n)||h.get(n)||'',authToken=get('auth_token'),feedToken=get('feed_token'),state=get('state'),error=get('error')||get('error_description');
+const st=document.getElementById('status'),tx=document.getElementById('statusText'),msg=document.getElementById('message'),btn=document.getElementById('openApp');
+try{history.replaceState({},document.title,location.pathname)}catch(_){}
+if(error){st.className='status bad';tx.textContent='Angel One login was not completed';msg.textContent='The broker returned an authentication error.';btn.style.display='none'}
+else if(authToken){st.className='status ok';tx.textContent='Angel One authentication received';msg.textContent='Returning to NSE Algo Signal…'}
+else{st.className='status bad';tx.textContent='No authentication token received';msg.textContent='Retry the Angel One login flow.'}
+function go(){if(!authToken)return;const q=new URLSearchParams();q.set('auth_token',authToken);if(feedToken)q.set('feed_token',feedToken);if(state)q.set('state',state);location.href='nsealgosignal://angel-callback?'+q.toString()}
+btn.onclick=go;if(authToken)setTimeout(go,700);document.getElementById('closePage').onclick=()=>window.close();
+})();
+</script></body></html>
