@@ -15,6 +15,9 @@ import org.json.JSONObject;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.NetworkInterface;
+import java.net.InetAddress;
+import java.net.Inet4Address;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ConcurrentHashMap;
@@ -229,6 +232,12 @@ public class MainActivity extends Activity {
                     c.setRequestProperty("Accept", "application/json");
                     c.setRequestProperty("Authorization", "Bearer "+token);
                     c.setRequestProperty("X-API-VERSION", "1.0");
+                    c.setRequestProperty("X-PrivateKey", apiKey);
+                    c.setRequestProperty("X-UserType", "USER");
+                    c.setRequestProperty("X-SourceID", "WEB");
+                    if(!lastLocalIp.isEmpty()) c.setRequestProperty("X-ClientLocalIP", lastLocalIp);
+                    if(!lastPublicIp.isEmpty()) c.setRequestProperty("X-ClientPublicIP", lastPublicIp);
+                    if(!lastMac.isEmpty()) c.setRequestProperty("X-MACAddress", lastMac);
                     int code = c.getResponseCode();
                     String raw = read(code >= 200 && code < 400 ? c.getInputStream() : c.getErrorStream());
                     JSONObject root = parseJson(raw);
@@ -274,7 +283,17 @@ public class MainActivity extends Activity {
                     c = (HttpURLConnection) new URL(LOGIN_URL).openConnection();
                     c.setRequestMethod("POST");
                     c.setConnectTimeout(15000); c.setReadTimeout(20000); c.setDoOutput(true);
-                    setAngelHeaders(c, key.trim(), publicIp, localIp, mac);
+                    String resolvedLocal = empty(localIp) ? detectLocalIp() : localIp.trim();
+                    String resolvedPublic = empty(publicIp) ? resolvePublicIp() : publicIp.trim();
+                    String resolvedMac = empty(mac) ? detectMacAddress() : mac.trim();
+                    if (empty(resolvedPublic) || empty(resolvedMac)) {
+                        postAngel(false, "Login blocked • real Public IP and MAC are required. Enter the values registered/visible on your network.");
+                        return;
+                    }
+                    lastLocalIp = resolvedLocal;
+                    lastPublicIp = resolvedPublic;
+                    lastMac = resolvedMac;
+                    setAngelHeaders(c, key.trim(), resolvedPublic, resolvedLocal, resolvedMac);
                     OutputStream os = c.getOutputStream(); os.write(body.toString().getBytes("UTF-8")); os.close();
                     int code = c.getResponseCode();
                     String raw = read(code >= 200 && code < 400 ? c.getInputStream() : c.getErrorStream());
@@ -306,6 +325,23 @@ public class MainActivity extends Activity {
             clientCode = client.trim(); apiKey = key.trim(); jwtToken = auth.trim(); feedToken = feed.trim();
             refreshToken = "";
             postAngel(true, "Angel One callback session imported • JWT READY • Feed Token READY");
+        }
+
+        @JavascriptInterface public void publisherLogin(final String key) {
+            if (key == null || key.trim().isEmpty()) {
+                postAngel(false, "Publisher login failed • SmartAPI API Key is required");
+                return;
+            }
+            try {
+                Uri.Builder b = Uri.parse("https://smartapi.angelone.in/publisher-login").buildUpon();
+                b.appendQueryParameter("api_key", key.trim());
+                b.appendQueryParameter("redirect_url", "nsealgosignal://angel-callback");
+                b.appendQueryParameter("state", "nse-algo-signal");
+                startActivity(new Intent(Intent.ACTION_VIEW, b.build()));
+                postAngel(true, "SmartAPI publisher login opened • complete login and return through the registered callback");
+            } catch (Exception e) {
+                postAngel(false, "Publisher login error • "+safe(e.getMessage()));
+            }
         }
 
         @JavascriptInterface public void loadLive(final String index) {
@@ -453,24 +489,59 @@ public class MainActivity extends Activity {
                     NetworkInterface ni=en.nextElement();
                     Enumeration<InetAddress> ae=ni.getInetAddresses();
                     while(ae.hasMoreElements()){
-                        InetAddress a=ae.nextElement();
-                        if(!a.isLoopbackAddress() && a instanceof Inet4Address)return a.getHostAddress();
+                        InetAddress x=ae.nextElement();
+                        if(!x.isLoopbackAddress() && x instanceof Inet4Address){
+                            String ip=x.getHostAddress();
+                            if(ip!=null && !ip.startsWith("127.")) return ip;
+                        }
                     }
                 }
             }catch(Exception ignored){}
-            return "127.0.0.1";
+            return "";
         }
+
+        private String resolvePublicIp(){
+            HttpURLConnection c=null;
+            try{
+                c=(HttpURLConnection)new URL("https://api.ipify.org").openConnection();
+                c.setRequestMethod("GET"); c.setConnectTimeout(8000); c.setReadTimeout(8000);
+                String ip=read(c.getInputStream()).trim();
+                if(ip.matches("\\d{1,3}(\\.\\d{1,3}){3}")) return ip;
+            }catch(Exception ignored){} finally { if(c!=null)c.disconnect(); }
+            return "";
+        }
+
+        private String detectMacAddress(){
+            try{
+                Enumeration<NetworkInterface> en=NetworkInterface.getNetworkInterfaces();
+                while(en.hasMoreElements()){
+                    byte[] mac=en.nextElement().getHardwareAddress();
+                    if(mac==null || mac.length!=6) continue;
+                    StringBuilder z=new StringBuilder();
+                    for(int i=0;i<mac.length;i++){ if(i>0)z.append(":"); z.append(String.format(Locale.US,"%02X",mac[i]&255)); }
+                    String out=z.toString();
+                    if(!out.equalsIgnoreCase("00:00:00:00:00:00")) return out;
+                }
+            }catch(Exception ignored){}
+            return "";
+        }
+
         private boolean empty(String s){return s==null||s.trim().isEmpty();}
 
         private void setAngelHeaders(HttpURLConnection c, String key) {
-            c.setRequestProperty("Content-Type", "application/json");
-            c.setRequestProperty("Accept", "application/json");
-            c.setRequestProperty("X-UserType", "USER");
-            c.setRequestProperty("X-SourceID", "WEB");
-            c.setRequestProperty("X-ClientLocalIP", lastLocalIp.isEmpty() ? detectLocalIp() : lastLocalIp);
-            c.setRequestProperty("X-ClientPublicIP", lastPublicIp.isEmpty() ? "0.0.0.0" : lastPublicIp);
-            c.setRequestProperty("X-MACAddress", lastMac.isEmpty() ? "00:00:00:00:00:00" : lastMac);
-            c.setRequestProperty("X-PrivateKey", key);
+            setAngelHeaders(c,key,lastPublicIp,lastLocalIp,lastMac);
+        }
+
+        private void setAngelHeaders(HttpURLConnection c, String key, String publicIp, String localIp, String mac) {
+            c.setRequestProperty("Content-Type","application/json");
+            c.setRequestProperty("Accept","application/json");
+            c.setRequestProperty("X-UserType","USER");
+            c.setRequestProperty("X-SourceID","WEB");
+            c.setRequestProperty("X-ClientLocalIP",localIp);
+            c.setRequestProperty("X-ClientPublicIP",publicIp);
+            c.setRequestProperty("X-MACAddress",mac);
+            c.setRequestProperty("X-PrivateKey",key);
+            c.setRequestProperty("User-Agent","Mozilla/5.0 (Linux; Android) NSEAlgoSignal/1.1");
         }
 
         private String state(String v) {
