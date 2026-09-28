@@ -16,7 +16,13 @@
 </section>
 
 <section id="nse" class="page">
-<div class="card"><div class="row"><h2 style="margin:0">NSE Direct Live</h2><span id="nseBadge" class="pill warn">FEED NOT CONNECTED</span></div>
+<div class="card"><div class="row"><h2 style="margin:0">NSE Real-Time L1/L2</h2><span id="nseBadge" class="pill warn">FEED NOT CONNECTED</span></div>
+<p class="muted small">Official NSE real-time feed is expected through your licensed NSE feed/data-vendor backend. The APK connects to that backend over secure WebSocket; it does not contain NSE credentials.</p>
+<input id="nseWs" class="input" placeholder="wss://your-secure-feed.example/ws">
+<button class="btn" onclick="connectNseWs()">CONNECT REAL-TIME FEED</button><button class="btn" onclick="disconnectNseWs()">DISCONNECT</button>
+<div class="grid"><div class="metric">Ticks<b id="nseTicks">0</b></div><div class="metric">Last Tick<b id="nseLast">--</b></div><div class="metric">5m Open<b id="cOpen">--</b></div><div class="metric">5m High<b id="cHigh">--</b></div><div class="metric">5m Low<b id="cLow">--</b></div><div class="metric">5m Close<b id="cClose">--</b></div></div>
+<div id="nseRtStatus" class="small muted">No real-time WebSocket backend configured.</div></div>
+<div class="card"><div class="row"><h2 style="margin:0">NSE Direct Live</h2><span class="pill">SERVER CHECK</span></div>
 <p class="muted small">This page is reserved for an official NSE real-time feed. It does not use Groww credentials and it never fabricates LTP/OI values.</p>
 <div class="grid">
 <div class="metric">NIFTY LTP<b id="nseNifty">--</b></div><div class="metric">BANKNIFTY<b id="nseBank">--</b></div>
@@ -50,6 +56,35 @@
 </main><div class="bottom">Educational analytics only • No automatic order execution</div>
 <script>
 let snaps=[];
+let nseWs=null,nseTickCount=0,nseCandle={bucket:null,o:null,h:null,l:null,c:null};
+function connectNseWs(){
+ const url=document.getElementById('nseWs').value.trim();
+ if(!/^wss:\/\//i.test(url)){document.getElementById('nseRtStatus').textContent='Use a secure wss:// licensed-feed backend URL.';return}
+ disconnectNseWs(); document.getElementById('nseBadge').textContent='CONNECTING...';
+ try{
+  nseWs=new WebSocket(url);
+  nseWs.onopen=()=>{document.getElementById('nseBadge').textContent='REAL-TIME CONNECTED';document.getElementById('nseRtStatus').textContent='Secure WebSocket connected. Waiting for verified ticks.'};
+  nseWs.onmessage=e=>handleNseTick(e.data);
+  nseWs.onerror=()=>{document.getElementById('nseBadge').textContent='FEED ERROR';document.getElementById('nseRtStatus').textContent='WebSocket error. Check licensed backend URL and credentials.'};
+  nseWs.onclose=()=>{document.getElementById('nseBadge').textContent='FEED DISCONNECTED'};
+ }catch(e){document.getElementById('nseRtStatus').textContent='WebSocket error: '+e.message}
+}
+function disconnectNseWs(){if(nseWs){try{nseWs.close()}catch(e){}nseWs=null}document.getElementById('nseBadge').textContent='FEED NOT CONNECTED'}
+function handleNseTick(raw){
+ let x;try{x=JSON.parse(raw)}catch(e){return}
+ let p=num(x.ltp??x.last_price??x.price);let ts=Date.parse(x.timestamp??x.time??'')||Date.now();
+ if(p==null)return;
+ nseTickCount++;document.getElementById('nseTicks').textContent=nseTickCount;document.getElementById('nseLast').textContent=p.toFixed(2);
+ let d=new Date(ts),bucket=Math.floor((d.getTime()/300000))*300000;
+ if(nseCandle.bucket!==bucket){nseCandle={bucket,o:p,h:p,l:p,c:p};}
+ else{nseCandle.h=Math.max(nseCandle.h,p);nseCandle.l=Math.min(nseCandle.l,p);nseCandle.c=p}
+ document.getElementById('cOpen').textContent=nseCandle.o.toFixed(2);
+ document.getElementById('cHigh').textContent=nseCandle.h.toFixed(2);
+ document.getElementById('cLow').textContent=nseCandle.l.toFixed(2);
+ document.getElementById('cClose').textContent=nseCandle.c.toFixed(2);
+ document.getElementById('nseRtStatus').textContent='Verified tick received • local 5-minute candle building • '+new Date(ts).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'});
+}
+
 function tab(x){document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(x).classList.add('on');document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));document.getElementById(x==='dash'?'tbDash':x==='nse'?'tbNse':x==='back'?'tbBack':'tbGroww').classList.add('on')}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function num(v){let n=parseFloat(String(v??'').replace(/,/g,''));return Number.isFinite(n)?n:null}
