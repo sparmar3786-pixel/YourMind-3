@@ -304,7 +304,7 @@ public class MainActivity extends Activity {
                         jwtToken = data == null ? "" : data.optString("jwtToken", "");
                         refreshToken = data == null ? "" : data.optString("refreshToken", "");
                         feedToken = data == null ? "" : data.optString("feedToken", "");
-                        clientCode = client.trim(); apiKey = key.trim(); lastPublicIp = publicIp == null ? "" : publicIp.trim(); lastLocalIp = localIp == null ? "" : localIp.trim(); lastMac = mac == null ? "" : mac.trim();
+                        clientCode = client.trim(); apiKey = key.trim(); lastPublicIp = resolvedPublic; lastLocalIp = resolvedLocal; lastMac = resolvedMac;
                         postAngel(true, "Login successful • JWT READY • Feed Token READY");
                     } else {
                         clearSession();
