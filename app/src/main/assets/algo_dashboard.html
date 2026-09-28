@@ -40,7 +40,7 @@ header{position:sticky;top:0;z-index:20;background:rgba(6,10,16,.94);backdrop-fi
 <input id="totpSecret" class="input" type="password" autocomplete="off" placeholder="Current 6-digit TOTP OR TOTP Secret">
 <div class="row" style="margin-top:6px"><div class="metric" style="flex:1"><span>TOTP</span><b id="totpCode">------</b></div><span id="totpTimer" class="badge">--s</span></div>
 <input id="apiKey" class="input" type="password" autocomplete="off" placeholder="SmartAPI Private API Key">
-<div class="grid"><input id="publicIp" class="input" placeholder="Registered Public IP *"><input id="mac" class="input" placeholder="Device / Network MAC Address *"></div>
+<div class="status small">Angel One network headers are handled by the app. Enter only your Client ID, MPIN, current TOTP and SmartAPI API Key.</div>
 <button class="btn primary" onclick="angelLogin()">SECURE LOGIN</button>
 <button class="btn" onclick="angelPublisher()">LOGIN VIA ANGEL ONE SMARTAPI</button>
 <div class="status small">Direct login sends the complete SmartAPI header set, including your real local/public IP and MAC. Do not use 0.0.0.0 or a dummy MAC. If the gateway still returns Request Rejected, the rejection is at Angel One WAF/API gateway level.</div>
@@ -94,9 +94,7 @@ function angelLogin(){
   const client=v('client'), pin=v('pin'), key=v('apiKey'), ip=v('publicIp'), mac=v('mac'), code=v('totpSecret').replace(/\D/g,'');
   if(!client||!pin||!key){angelMsg(false,'Client Code, MPIN and SmartAPI API Key are required');return}
   if(!/^\d{6}$/.test(code)){angelMsg(false,'Enter the current 6-digit Google Authenticator TOTP');return}
-  if(!ip){angelMsg(false,'Registered Public IP is required for this API configuration');return}
-  if(!mac){angelMsg(false,'MAC Address is required for this API configuration');return}
-  document.getElementById('totpCode').textContent=code;
+    document.getElementById('totpCode').textContent=code;
   AndroidAngel.login(client,pin,code,key,ip,'',mac);
 }
 function updateTotp(){
