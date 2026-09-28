@@ -2,6 +2,9 @@ name: Build NSE Algo Signal APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -24,7 +27,7 @@ jobs:
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
-          accept-android-sdk-licenses: 'true'
+          accept-android-sdk-licenses: 'yes'
 
       - name: Verify Android SDK
         run: |
