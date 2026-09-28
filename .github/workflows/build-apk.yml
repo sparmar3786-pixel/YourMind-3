@@ -23,8 +23,6 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
-        with:
-
       - name: Install Android platform and build tools
         run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
