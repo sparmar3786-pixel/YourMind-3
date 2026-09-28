@@ -2,6 +2,8 @@ package com.sachin.nsealgotrading;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.webkit.*;
 import android.net.Uri;
 import android.content.Intent;
