@@ -17,6 +17,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
+import okhttp3.*;
 
 public class MainActivity extends Activity {
     private WebView w;
@@ -141,6 +144,11 @@ public class MainActivity extends Activity {
         private volatile String feedToken = "";
         private volatile String clientCode = "";
         private volatile String apiKey = "";
+        private volatile OkHttpClient wsClient;
+        private volatile WebSocket marketSocket;
+        private final ConcurrentHashMap<String, LiveRow> liveRows = new ConcurrentHashMap<>();
+        private final Handler heartbeat = new Handler(Looper.getMainLooper());
+        private volatile String selectedIndex = "NIFTY";
 
         @JavascriptInterface public String generateTotp(final String secret) {
             try { return totp(secret); } catch (Exception e) { return ""; }
