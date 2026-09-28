@@ -51,6 +51,7 @@ public class MainActivity extends Activity {
         });
         w.addJavascriptInterface(new GrowwBridge(), "AndroidGroww");
         w.addJavascriptInterface(new NseBridge(), "AndroidNSE");
+        w.addJavascriptInterface(new NseMcpBridge(), "AndroidNseMcp");
         setContentView(w);
         w.loadUrl("https://appassets.androidplatform.net/assets/algo_dashboard.html");
     }
@@ -86,6 +87,83 @@ public class MainActivity extends Activity {
                 } catch(Exception e) {
                     postNse(false, "NSE SERVER: connection error • "+e.getClass().getSimpleName());
                 } finally { if(c!=null)c.disconnect(); }
+            });
+        }
+    }
+
+
+    public class NseMcpBridge {
+        private String sessionId = null;
+
+        @JavascriptInterface public void connect(final String url) {
+            mcpRequest(url, "initialize",
+                "{\\"protocolVersion\\":\\"2025-06-18\\",\\"capabilities\\":{},\\"clientInfo\\":{\\"name\\":\\"NSE-Algo-Signal\\",\\"version\\":\\"1.0\\"}}",
+                true);
+        }
+
+        @JavascriptInterface public void listTools(final String url) {
+            mcpRequest(url, "tools/list", "{}", false);
+        }
+
+        @JavascriptInterface public void callTool(final String url, final String name, final String argsJson) {
+            String args = argsJson == null || argsJson.trim().isEmpty() ? "{}" : argsJson;
+            String params = "{\\"name\\":"+JSONObject.quote(name)+",\\"arguments\\":"+args+"}";
+            mcpRequest(url, "tools/call", params, false);
+        }
+
+        private void mcpRequest(final String url, final String method, final String params, final boolean init) {
+            net.execute(() -> {
+                HttpURLConnection c=null;
+                try {
+                    c=(HttpURLConnection)new URL(url).openConnection();
+                    c.setRequestMethod("POST");
+                    c.setConnectTimeout(15000);
+                    c.setReadTimeout(30000);
+                    c.setDoOutput(true);
+                    c.setRequestProperty("Content-Type","application/json");
+                    c.setRequestProperty("Accept","application/json, text/event-stream");
+                    c.setRequestProperty("User-Agent","NSE-Algo-Signal-Android/1.0");
+                    if(sessionId!=null && !init) c.setRequestProperty("Mcp-Session-Id",sessionId);
+                    String body="{\\"jsonrpc\\":\\"2.0\\",\\"id\\":"+System.currentTimeMillis()+",\\"method\\":"+JSONObject.quote(method)+",\\"params\\":"+params+"}";
+                    OutputStream os=c.getOutputStream();
+                    os.write(body.getBytes("UTF-8")); os.flush(); os.close();
+                    int code=c.getResponseCode();
+                    String sid=c.getHeaderField("Mcp-Session-Id");
+                    if(sid!=null && !sid.isEmpty()) sessionId=sid;
+                    InputStream is=code>=200&&code<400?c.getInputStream():c.getErrorStream();
+                    String response=read(is);
+                    if(init && code>=200&&code<300) {
+                        // MCP initialization is followed by initialized notification.
+                        sendMcpNotification(url);
+                    }
+                    postMcp(code>=200&&code<300, method, code, response, sessionId);
+                } catch(Exception e) {
+                    postMcp(false, method, 0, e.getClass().getSimpleName()+": "+e.getMessage(), sessionId);
+                } finally { if(c!=null)c.disconnect(); }
+            });
+        }
+
+        private void sendMcpNotification(final String url) {
+            HttpURLConnection c=null;
+            try {
+                c=(HttpURLConnection)new URL(url).openConnection();
+                c.setRequestMethod("POST");
+                c.setConnectTimeout(10000); c.setReadTimeout(10000); c.setDoOutput(true);
+                c.setRequestProperty("Content-Type","application/json");
+                c.setRequestProperty("Accept","application/json, text/event-stream");
+                c.setRequestProperty("User-Agent","NSE-Algo-Signal-Android/1.0");
+                if(sessionId!=null)c.setRequestProperty("Mcp-Session-Id",sessionId);
+                String body="{\\"jsonrpc\\":\\"2.0\\",\\"method\\":\\"notifications/initialized\\"}";
+                OutputStream os=c.getOutputStream(); os.write(body.getBytes("UTF-8")); os.flush(); os.close();
+                c.getResponseCode();
+            } catch(Exception ignored) {} finally { if(c!=null)c.disconnect(); }
+        }
+
+        private void postMcp(final boolean ok, final String method, final int code, final String raw, final String sid) {
+            runOnUiThread(() -> {
+                String safe=(raw==null?"":raw).replace("\\\\","\\\\\\\\").replace("'","\\\\'");
+                String safeSid=(sid==null?"":sid).replace("\\\\","\\\\\\\\").replace("'","\\\\'");
+                w.evaluateJavascript("window.nseMcpNativeResult("+ok+",'"+method+"',"+code+",'"+safe+"','"+safeSid+"')",null);
             });
         }
     }
