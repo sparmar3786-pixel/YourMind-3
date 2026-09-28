@@ -13,6 +13,20 @@
 <div class="grid"><div class="metric">LTP<b id="ltp">--</b></div><div class="metric">OI Change<b id="oi">--</b></div><div class="metric">ENTRY<b>--</b></div><div class="metric">SL<b>--</b></div><div class="metric">TARGET<b>--</b></div><div class="metric">R:R<b>--</b></div></div></div>
 <div class="card"><div class="row"><b>PDF fields mapped</b><span class="pill">Groww</span></div><div class="grid"><div class="metric">LTP<b>✓</b></div><div class="metric">OI<b>✓</b></div><div class="metric">OI Δ<b>✓</b></div><div class="metric">Volume<b>✓</b></div><div class="metric">Depth<b>✓</b></div><div class="metric">Greeks<b>✓</b></div></div></div>
 <div class="card"><b>Connection state</b><p id="dashState" class="muted">Groww API not tested in this APK session.</p></div>
+<div class="card"><div class="row"><b>OPTION CHAIN • LIVE</b><span id="ocBadge" class="pill warn">SELECT INDEX</span></div>
+<p class="muted small">Select NIFTY, BANKNIFTY, FINNIFTY or SENSEX. The APK fetches the selected exchange's option chain from Groww; no values are fabricated.</p>
+<div class="grid">
+<button class="btn" onclick="selectOC('NSE','NIFTY')">NIFTY</button>
+<button class="btn" onclick="selectOC('NSE','BANKNIFTY')">BANKNIFTY</button>
+<button class="btn" onclick="selectOC('NSE','FINNIFTY')">FINNIFTY</button>
+<button class="btn" onclick="selectOC('BSE','SENSEX')">SENSEX</button>
+</div>
+<select id="ocExpiry" class="input"><option value="">Select expiry</option></select>
+<button class="btn" onclick="loadSelectedOC()">LOAD OPTION CHAIN</button>
+<div id="ocUnderlying" class="metric" style="margin-top:8px">Underlying LTP<b>--</b></div>
+<div id="ocStatus" class="small muted">Enter Groww Access Token in Groww API tab, then select an index.</div>
+<div style="overflow:auto;margin-top:8px"><table class="table"><thead><tr><th>Strike</th><th>CE LTP</th><th>CE OI</th><th>CE Vol</th><th>PE LTP</th><th>PE OI</th><th>PE Vol</th></tr></thead><tbody id="ocRows"><tr><td colspan="7" class="muted">No option-chain data loaded.</td></tr></tbody></table></div>
+</div>
 </section>
 
 <section id="nse" class="page">
@@ -63,7 +77,7 @@
 <input id="token" class="input" type="password" autocomplete="off" placeholder="Groww Access Token">
 <button class="btn" onclick="testGroww()">TEST USER PROFILE</button>
 <button class="btn" onclick="testQuote()">TEST NIFTY LIVE QUOTE</button><button id="liveBtn" class="btn" onclick="startLive()">START LIVE • 5s</button><button class="btn" onclick="stopLive()">STOP LIVE</button>
-<input id="expiry" class="input" value="2026-10-01" placeholder="Option expiry YYYY-MM-DD">
+<input id="expiry" class="input" value="" placeholder="Option expiry YYYY-MM-DD (legacy test)">
 <button class="btn" onclick="testOptionChain()">TEST NIFTY OPTION CHAIN</button>
 <div id="growwStatus" class="card"><span class="muted">Not tested.</span></div></div>
 <div class="card"><b>What is connected</b><div class="small muted"><p>✓ User Profile endpoint</p><p>✓ NIFTY live quote endpoint</p><p>✓ NIFTY option-chain endpoint</p><p>✓ PDF fields: LTP, OI, OI change, volume, depth, Greeks</p><p>✓ Token is not persisted by the native bridge</p><p>✗ Actual live connection cannot be confirmed until a valid token is tested in the installed APK</p></div></div>
@@ -162,6 +176,57 @@ window.nseMcpNativeResult=function(ok,method,code,raw,sid){
  }
 }
 
+let ocExchange='',ocUnderlying='';
+function selectOC(exchange,underlying){
+ ocExchange=exchange;ocUnderlying=underlying;
+ document.getElementById('ocBadge').textContent=underlying;
+ document.getElementById('ocStatus').textContent='Loading available expiries...';
+ document.getElementById('ocRows').innerHTML='<tr><td colspan="7">Loading...</td></tr>';
+ const token=document.getElementById('token').value.trim();
+ if(!token){document.getElementById('ocStatus').textContent='Groww Access Token required. Open Groww API tab and enter your token.';return}
+ if(!window.AndroidGroww||!AndroidGroww.getExpiries){document.getElementById('ocStatus').textContent='This APK build does not contain the option-chain bridge. Rebuild required.';return}
+ AndroidGroww.getExpiries(token,exchange,underlying,new Date().getFullYear());
+}
+function loadSelectedOC(){
+ const token=document.getElementById('token').value.trim();
+ const expiry=document.getElementById('ocExpiry').value;
+ if(!token){document.getElementById('ocStatus').textContent='Groww Access Token required.';return}
+ if(!ocUnderlying||!ocExchange){document.getElementById('ocStatus').textContent='Select an index first.';return}
+ if(!expiry){document.getElementById('ocStatus').textContent='Select an expiry first.';return}
+ if(!window.AndroidGroww||!AndroidGroww.getOptionChain){document.getElementById('ocStatus').textContent='Option-chain bridge unavailable. Rebuild APK.';return}
+ document.getElementById('ocStatus').textContent='Loading '+ocUnderlying+' '+expiry+' option chain...';
+ document.getElementById('ocRows').innerHTML='<tr><td colspan="7">Loading...</td></tr>';
+ AndroidGroww.getOptionChain(token,ocExchange,ocUnderlying,expiry);
+}
+window.growwExpiriesResult=function(ok,msg,raw){
+ if(!ok){document.getElementById('ocStatus').textContent=msg;return}
+ try{
+  const o=JSON.parse(raw||'{}'), arr=o?.payload?.expiries||[];
+  const s=document.getElementById('ocExpiry');s.innerHTML='<option value="">Select expiry</option>';
+  arr.forEach(e=>{const opt=document.createElement('option');opt.value=e;opt.textContent=e;s.appendChild(opt)});
+  if(arr.length){
+   s.value=arr[0];
+   document.getElementById('ocStatus').textContent=ocUnderlying+' • '+arr.length+' expiry dates loaded • selected '+arr[0];
+  }else document.getElementById('ocStatus').textContent='No expiry dates returned for '+ocUnderlying;
+ }catch(e){document.getElementById('ocStatus').textContent='Expiry response parse error • '+msg}
+};
+window.growwOptionChainResult=function(ok,msg,raw){
+ document.getElementById('ocStatus').textContent=msg;
+ if(!ok){document.getElementById('ocRows').innerHTML='<tr><td colspan="7" class="bad">'+esc(raw||msg)+'</td></tr>';return}
+ try{
+  const o=JSON.parse(raw||'{}'),p=o?.payload||{},strikes=p?.strikes||{};
+  const ltp=p?.underlying_ltp;
+  document.getElementById('ocUnderlying').innerHTML='Underlying LTP<b>'+((ltp==null||Number.isNaN(Number(ltp)))?'--':Number(ltp).toFixed(2))+'</b>';
+  const keys=Object.keys(strikes).sort((a,b)=>Number(a)-Number(b));
+  const rows=keys.map(k=>{
+   const x=strikes[k]||{},ce=x.CE||{},pe=x.PE||{};
+   return '<tr><td><b>'+esc(k)+'</b></td><td>'+val(ce.ltp)+'</td><td>'+val(ce.open_interest)+'</td><td>'+val(ce.volume)+'</td><td>'+val(pe.ltp)+'</td><td>'+val(pe.open_interest)+'</td><td>'+val(pe.volume)+'</td></tr>';
+  }).join('');
+  document.getElementById('ocRows').innerHTML=rows||'<tr><td colspan="7">No strikes returned.</td></tr>';
+  document.getElementById('ocBadge').textContent=ocUnderlying+' • '+keys.length+' strikes';
+ }catch(e){document.getElementById('ocRows').innerHTML='<tr><td colspan="7" class="bad">Option-chain parse error: '+esc(e.message)+'</td></tr>'}
+};
+function val(v){return v==null||v===''?'--':esc(Number.isFinite(Number(v))?Number(v).toFixed(2):v)}
 function tab(x){document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(x).classList.add('on');document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));document.getElementById(x==='dash'?'tbDash':x==='nse'?'tbNse':x==='mcp'?'tbMcp':x==='back'?'tbBack':'tbGroww').classList.add('on')}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function num(v){let n=parseFloat(String(v??'').replace(/,/g,''));return Number.isFinite(n)?n:null}
