@@ -34,12 +34,13 @@ header{position:sticky;top:0;z-index:20;background:rgba(6,10,16,.94);backdrop-fi
 
 <section id="angel" class="page">
 <div class="card hero"><div class="row"><div><div class="eyebrow">BROKER CONNECTION</div><div class="sectionTitle">Angel One SmartAPI</div></div><span id="angelBadge" class="badge warn">NOT CONNECTED</span></div>
-<p class="muted small">The supplied SmartAPI documentation specifies client code + PIN + TOTP authentication and returns JWT, refresh token and feed token. Credentials are used only for the current APK session.</p>
+<p class="muted small">Enter the TOTP secret from your Angel One 2FA setup once. The APK generates the current 6-digit TOTP locally and sends only the generated code for login. The secret is not sent to chat or persisted by the app.</p>
 <input id="client" class="input" autocomplete="off" placeholder="Angel One Client Code">
 <input id="pin" class="input" type="password" autocomplete="off" placeholder="Trading PIN">
-<input id="totp" class="input" inputmode="numeric" autocomplete="one-time-code" placeholder="TOTP">
+<input id="totpSecret" class="input" type="password" autocomplete="off" placeholder="TOTP Secret / Authenticator Key">
+<div class="row" style="margin-top:6px"><div class="metric" style="flex:1"><span>AUTO TOTP</span><b id="totpCode">------</b></div><span id="totpTimer" class="badge">--s</span></div>
 <input id="apiKey" class="input" type="password" autocomplete="off" placeholder="SmartAPI Private API Key">
-<button class="btn primary" onclick="angelLogin()">SECURE LOGIN</button>
+<button class="btn primary" onclick="angelLogin()">GENERATE TOTP & SECURE LOGIN</button>
 <button class="btn" onclick="angelProfile()">VERIFY PROFILE / API ACCESS</button>
 <button class="btn" onclick="angelFeed()">CHECK FEED TOKEN</button>
 <button class="btn danger" onclick="angelLogout()">LOGOUT / CLEAR SESSION</button>
@@ -82,7 +83,26 @@ header{position:sticky;top:0;z-index:20;background:rgba(6,10,16,.94);backdrop-fi
 <script>
 let toolsList=[];
 function tab(id){document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));document.getElementById({dash:'tDash',angel:'tAngel',nse:'tNse',mcp:'tMcp',data:'tData',set:'tSet'}[id]).classList.add('on')}
-function angelLogin(){if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing. Rebuild APK.');return}AndroidAngel.login(v('client'),v('pin'),v('totp'),v('apiKey'))}
+function angelLogin(){
+  if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing. Rebuild APK.');return}
+  let secret=v('totpSecret'), code=AndroidAngel.generateTotp(secret);
+  if(!secret){angelMsg(false,'TOTP Secret is required for automatic TOTP generation');return}
+  if(!code){angelMsg(false,'Invalid TOTP Secret • check the secret from Angel One 2FA setup');return}
+  document.getElementById('totpCode').textContent=code;
+  AndroidAngel.login(v('client'),v('pin'),code,v('apiKey'));
+}
+function updateTotp(){
+  if(!window.AndroidAngel)return;
+  let secret=v('totpSecret');
+  let left=30-(Math.floor(Date.now()/1000)%30);
+  document.getElementById('totpTimer').textContent=left+'s';
+  if(secret){
+    let code=AndroidAngel.generateTotp(secret);
+    document.getElementById('totpCode').textContent=code||'------';
+  }else{
+    document.getElementById('totpCode').textContent='------';
+  }
+}
 function angelProfile(){if(window.AndroidAngel)AndroidAngel.profile()}
 function angelFeed(){if(window.AndroidAngel)AndroidAngel.feedInfo()}
 function angelLogout(){if(window.AndroidAngel)AndroidAngel.logout()}
@@ -109,6 +129,9 @@ window.handleAngelCallback=function(authToken,feedToken,state){
   tab('angel');
 };
 function v(id){return document.getElementById(id).value.trim()}
-setInterval(()=>document.getElementById('market').textContent='IST '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'}),1000)
+setInterval(()=>{
+  document.getElementById('market').textContent='IST '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'});
+  updateTotp();
+},1000)
 </script>
 </body></html>
