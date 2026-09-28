@@ -163,108 +163,8 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface public void login(final String client, final String pin,
                                                final String totp, final String key) {
-            if (client == null || pin == null || totp == null || key == null ||
-                client.trim().isEmpty() || pin.trim().isEmpty() ||
-                totp.trim().isEmpty() || key.trim().isEmpty()) {
-                postAngel(false, "Login failed • Client Code, PIN, TOTP and API Key are required");
-                return;
-            }
-            net.execute(() -> {
-                HttpURLConnection c = null;
-                try {
-                    JSONObject body = new JSONObject();
-                    body.put("clientcode", client.trim());
-                    body.put("password", pin.trim());
-                    body.put("totp", totp.trim());
-
-                    c = (HttpURLConnection) new URL(LOGIN_URL).openConnection();
-                    c.setRequestMethod("POST");
-                    c.setConnectTimeout(15000);
-                    c.setReadTimeout(20000);
-                    c.setDoOutput(true);
-                    setAngelHeaders(c, key.trim());
-
-                    OutputStream os = c.getOutputStream();
-                    os.write(body.toString().getBytes("UTF-8"));
-                    os.flush();
-                    os.close();
-
-                    int code = c.getResponseCode();
-                    String raw = read(code >= 200 && code < 400 ? c.getInputStream() : c.getErrorStream());
-                    JSONObject root = parseJson(raw);
-                    boolean ok = code >= 200 && code < 300 && root != null &&
-                        "true".equalsIgnoreCase(root.optString("status"));
-
-                    if (ok) {
-                        JSONObject data = root.optJSONObject("data");
-                        jwtToken = normalizeJwt(data == null ? "" : data.optString("jwtToken", ""));
-                        refreshToken = data == null ? "" : data.optString("refreshToken", "");
-                        feedToken = data == null ? "" : data.optString("feedToken", "");
-                        clientCode = client.trim();
-                        apiKey = key.trim();
-                        postAngel(true, "Login successful • JWT="+state(jwtToken)+" • Feed Token="+state(feedToken));
-                    } else {
-                        clearSession();
-                        postAngel(false, "Login failed • HTTP "+code+" • "+extractError(raw));
-                    }
-                } catch (Exception e) {
-                    clearSession();
-                    postAngel(false, "Login error • "+e.getClass().getSimpleName()+" • "+safe(e.getMessage()));
-                } finally {
-                    if (c != null) c.disconnect();
-                }
-            });
+            login(client, pin, totp, key, "", "", "");
         }
-
-        @JavascriptInterface public void profile() {
-            final String token = jwtToken;
-            if (token.isEmpty()) {
-                postAngel(false, "Profile check failed • Login first");
-                return;
-            }
-            net.execute(() -> {
-                HttpURLConnection c = null;
-                try {
-                    c = (HttpURLConnection) new URL(PROFILE_URL).openConnection();
-                    c.setRequestMethod("GET");
-                    c.setConnectTimeout(10000);
-                    c.setReadTimeout(15000);
-                    c.setRequestProperty("Accept", "application/json");
-                    c.setRequestProperty("Authorization", token.startsWith("Bearer ") ? token : "Bearer "+token);
-                    c.setRequestProperty("X-API-VERSION", "1.0");
-                    c.setRequestProperty("X-PrivateKey", apiKey);
-                    c.setRequestProperty("X-UserType", "USER");
-                    c.setRequestProperty("X-SourceID", "WEB");
-                    if(!lastLocalIp.isEmpty()) c.setRequestProperty("X-ClientLocalIP", lastLocalIp);
-                    if(!lastPublicIp.isEmpty()) c.setRequestProperty("X-ClientPublicIP", lastPublicIp);
-                    if(!lastMac.isEmpty()) c.setRequestProperty("X-MACAddress", lastMac);
-                    int code = c.getResponseCode();
-                    String raw = read(code >= 200 && code < 400 ? c.getInputStream() : c.getErrorStream());
-                    JSONObject root = parseJson(raw);
-                    boolean ok = code >= 200 && code < 300 &&
-                        root != null && "true".equalsIgnoreCase(root.optString("status"));
-                    postAngel(ok, ok
-                        ? "Profile verified • API access active • NSE/BSE permissions returned"
-                        : "Profile check failed • HTTP "+code+" • "+extractError(raw));
-                } catch (Exception e) {
-                    postAngel(false, "Profile error • "+e.getClass().getSimpleName());
-                } finally {
-                    if (c != null) c.disconnect();
-                }
-            });
-        }
-
-        @JavascriptInterface public void feedInfo() {
-            postAngel(!feedToken.isEmpty(), feedToken.isEmpty()
-                ? "Feed token not available • Login first"
-                : "Feed token available • "+state(feedToken)+" • ready for feed integration");
-        }
-
-        @JavascriptInterface public void logout() {
-            clearSession();
-            postAngel(true, "Session cleared • Logged out");
-        }
-
 
         @JavascriptInterface public void login(final String client, final String pin, final String totp, final String key,
                                                final String publicIp, final String localIp, final String mac) {
@@ -306,6 +206,7 @@ public class MainActivity extends Activity {
                         feedToken = data == null ? "" : data.optString("feedToken", "");
                         clientCode = client.trim(); apiKey = key.trim(); lastPublicIp = resolvedPublic; lastLocalIp = resolvedLocal; lastMac = resolvedMac;
                         postAngel(true, "Login successful • JWT READY • Feed Token READY");
+                        loadLive("NIFTY");
                     } else {
                         clearSession();
                         postAngel(false, "Login failed • HTTP "+code+" • "+extractError(raw));
@@ -457,8 +358,8 @@ public class MainActivity extends Activity {
                         heartbeat.removeCallbacksAndMessages(null);
                         heartbeat.postDelayed(new Runnable(){@Override public void run(){
                             try{if(marketSocket!=null)marketSocket.send("ping");}catch(Exception ignored){}
-                            if(marketSocket!=null)heartbeat.postDelayed(this,10000);
-                        }},10000);
+                            if(marketSocket!=null)heartbeat.postDelayed(this,30000);
+                        }},30000);
                     }catch(Exception e){postMarket(false,"LIVE","Subscription error • "+safe(e.getMessage()));}
                 }
                 @Override public void onMessage(WebSocket ws, okio.ByteString bytes){parseLivePacket(bytes.toByteArray());}
