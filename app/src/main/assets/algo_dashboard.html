@@ -41,7 +41,7 @@ header{position:sticky;top:0;z-index:20;background:rgba(6,10,16,.94);backdrop-fi
 <div class="row" style="margin-top:6px"><div class="metric" style="flex:1"><span>TOTP</span><b id="totpCode">------</b></div><span id="totpTimer" class="badge">--s</span></div>
 <input id="apiKey" class="input" type="password" autocomplete="off" placeholder="SmartAPI Private API Key">
 <div class="grid"><input id="publicIp" class="input" placeholder="Registered Public IP *"><input id="mac" class="input" placeholder="Device / Network MAC Address *"></div>
-<button class="btn primary" onclick="angelLogin()">GENERATE TOTP & SECURE LOGIN</button>
+<button class="btn primary" onclick="angelLogin()">SECURE LOGIN</button>
 <button class="btn" onclick="angelPublisher()">LOGIN VIA ANGEL ONE SMARTAPI</button>
 <div class="status small">Direct login sends the complete SmartAPI header set, including your real local/public IP and MAC. Do not use 0.0.0.0 or a dummy MAC. If the gateway still returns Request Rejected, the rejection is at Angel One WAF/API gateway level.</div>
 <button class="btn" onclick="angelProfile()">VERIFY PROFILE / API ACCESS</button>
@@ -100,16 +100,9 @@ function angelLogin(){
   AndroidAngel.login(client,pin,code,key,ip,'',mac);
 }
 function updateTotp(){
-  if(!window.AndroidAngel)return;
-  let secret=v('totpSecret');
-  let left=30-(Math.floor(Date.now()/1000)%30);
-  document.getElementById('totpTimer').textContent=left+'s';
-  if(secret){
-    let code=AndroidAngel.generateTotp(secret);
-    document.getElementById('totpCode').textContent=code||'------';
-  }else{
-    document.getElementById('totpCode').textContent='------';
-  }
+  const code=v('totpSecret').replace(/\D/g,'').slice(0,6);
+  document.getElementById('totpCode').textContent=code||'------';
+  document.getElementById('totpTimer').textContent='MANUAL';
 }
 function angelPublisher(){if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing. Rebuild APK.');return}AndroidAngel.publisherLogin(v('apiKey'))}
 function loadLive(){if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing.');return}let idx=v('liveIndex')||'NIFTY';AndroidAngel.loadLive(idx)}
