@@ -73,7 +73,8 @@ public class MainActivity extends Activity {
         w.addJavascriptInterface(new NseBridge(), "AndroidNSE");
         w.addJavascriptInterface(new NseMcpBridge(), "AndroidNseMcp");
         setContentView(w);
-        w.loadUrl("https://appassets.androidplatform.net/assets/algo_dashboard.html");\n        handleAngelCallback(getIntent());
+        w.loadUrl("https://appassets.androidplatform.net/assets/algo_dashboard.html");;
+        handleAngelCallback(getIntent());
     }
 
     @Override protected void onNewIntent(Intent intent) {
