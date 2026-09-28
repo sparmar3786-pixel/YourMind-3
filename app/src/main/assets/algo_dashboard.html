@@ -122,30 +122,38 @@ function nseMcpCall(){
  AndroidNseMcp.callTool(document.getElementById('mcpUrl').value.trim(),t.name,JSON.stringify(args));
  document.getElementById('mcpResult').textContent='Calling '+t.name+'...';
 }
+function parseMcpPayload(raw){
+ let t=String(raw||'').trim();
+ try{return JSON.parse(t)}catch(e){}
+ let lines=t.split(/\r?\n/);
+ for(let line of lines){
+   if(line.trim().startsWith('data:')){
+     let x=line.replace(/^data:\s*/,'').trim();
+     try{let o=JSON.parse(x);if(o&& (o.result||o.error))return o}catch(e){}
+   }
+ }
+ return null;
+}
 window.nseMcpNativeResult=function(ok,method,code,raw,sid){
  mcpSessionId=sid||mcpSessionId;
- let obj=null;try{obj=JSON.parse(raw)}catch(e){
-   const ds=String(raw||'').split(/\r?\n/).filter(x=>x.trim().startsWith('data:')).map(x=>x.replace(/^data:\s*/,'').trim()).filter(Boolean);
-   try{obj=JSON.parse(ds[ds.length-1]||raw)}catch(e2){}
- }
+ let obj=parseMcpPayload(raw);
  if(!ok){
    document.getElementById('mcpBadge').textContent='ERROR';
-   document.getElementById('mcpStatus').textContent='NSE MCP HTTP '+code+' • '+(obj?.error?.message||raw||'request failed');
+   document.getElementById('mcpStatus').textContent='NSE MCP HTTP '+code+' • '+(obj?.error?.message||String(raw||'').slice(0,220));
    return;
  }
- if(method==='initialize'){
+ if(method==='server/discover'||method==='initialize'){
    document.getElementById('mcpBadge').textContent='CONNECTED';
-   document.getElementById('mcpStatus').textContent='MCP initialized. Loading tools...';
-   nseMcpTools();
+   document.getElementById('mcpStatus').textContent='MCP '+(method==='server/discover'?'discovered':'initialized')+' • loading tools...';
+   if(method==='initialize') nseMcpTools();
    return;
  }
  if(method==='tools/list'){
    mcpTools=(obj?.result?.tools)||[];
-   const s=document.getElementById('mcpTool');s.innerHTML='';
-   mcpTools.forEach((t,i)=>{let o=document.createElement('option');o.value=String(i);o.textContent=t.name+(t.description?' — '+t.description.slice(0,90):'');s.appendChild(o)});
+   const sel=document.getElementById('mcpTool');sel.innerHTML='';
+   mcpTools.forEach((t,i)=>{let o=document.createElement('option');o.value=String(i);o.textContent=t.name+(t.description?' — '+t.description.slice(0,90):'');sel.appendChild(o)});
    document.getElementById('mcpToolCount').textContent=mcpTools.length;
-   document.getElementById('mcpStatus').textContent='Tools loaded successfully • '+mcpTools.length+' tool(s).';
-   if(!mcpTools.length)document.getElementById('mcpStatus').textContent='Connected, but this MCP endpoint returned 0 tools.';
+   document.getElementById('mcpStatus').textContent=mcpTools.length?'Tools loaded successfully • '+mcpTools.length+' tool(s).':'tools/list returned 0 tools • '+String(raw||'').slice(0,220);
    return;
  }
  if(method==='tools/call'){
