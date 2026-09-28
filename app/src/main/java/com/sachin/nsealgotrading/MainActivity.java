@@ -801,7 +801,7 @@ public class MainActivity extends Activity {
     }
 
     private String safe(String s) {
-        return s == null ? "" : s.replace("
+        return s == null ? "" : s.replace("\n", " ").replace("\r", " ");
 "," ").replace("\r"," ");
     }
 
