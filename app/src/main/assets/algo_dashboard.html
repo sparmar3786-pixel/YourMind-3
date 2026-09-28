@@ -86,7 +86,8 @@ header{position:sticky;top:0;z-index:20;background:rgba(6,10,16,.94);backdrop-fi
 </main>
 <div class="bottom">Educational analytics • No automatic order execution • Real data only</div>
 <script>
-let toolsList=[];\nconst liveRows=new Map();let liveTicks=0;
+let toolsList=[];
+const liveRows=new Map();let liveTicks=0;
 function tab(id){document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));document.getElementById({dash:'tDash',angel:'tAngel',nse:'tNse',mcp:'tMcp',data:'tData',set:'tSet'}[id]).classList.add('on')}
 function angelLogin(){
   if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing. Rebuild APK.');return}
