@@ -227,6 +227,38 @@ public class MainActivity extends Activity {
             getOptionChain(token, "NSE", "NIFTY", expiry);
         }
 
+        @JavascriptInterface public void getExpiries(final String token, final String exchange, final String underlying, final int year) {
+            String ex = exchange == null ? "" : exchange.trim().toUpperCase();
+            String u = underlying == null ? "" : underlying.trim().toUpperCase();
+            if (token == null || token.trim().isEmpty()) {
+                postExpiries(false, "EXPIRIES: Groww Access Token required", "");
+                return;
+            }
+            if (!(ex.equals("NSE") || ex.equals("BSE")) || u.isEmpty()) {
+                postExpiries(false, "EXPIRIES: invalid exchange/underlying", "");
+                return;
+            }
+            net.execute(() -> {
+                HttpURLConnection c = null;
+                try {
+                    String url = "https://api.groww.in/v1/historical/expiries?exchange="+ex+"&underlying_symbol="+u+"&year="+year;
+                    c = (HttpURLConnection)new URL(url).openConnection();
+                    c.setRequestMethod("GET");
+                    c.setConnectTimeout(15000);
+                    c.setReadTimeout(30000);
+                    c.setRequestProperty("Accept","application/json");
+                    c.setRequestProperty("Authorization","Bearer "+token.trim());
+                    c.setRequestProperty("X-API-VERSION","1.0");
+                    int code=c.getResponseCode();
+                    InputStream is=code>=200&&code<400?c.getInputStream():c.getErrorStream();
+                    String body=read(is);
+                    postExpiries(code>=200&&code<300, "EXPIRIES "+ex+" "+u+" • HTTP "+code, body);
+                } catch(Exception exx) {
+                    postExpiries(false, "EXPIRIES connection error • "+exx.getClass().getSimpleName(), "");
+                } finally { if(c!=null)c.disconnect(); }
+            });
+        }
+
         @JavascriptInterface public void getOptionChain(final String token, final String exchange, final String underlying, final String expiry) {
             String e = expiry == null ? "" : expiry.trim();
             String ex = exchange == null ? "" : exchange.trim().toUpperCase();
@@ -427,6 +459,14 @@ public class MainActivity extends Activity {
         StringBuilder b=new StringBuilder(); String line;
         while((line=r.readLine())!=null)b.append(line);
         r.close(); return b.toString();
+    }
+
+    private void postExpiries(final boolean ok, final String msg, final String body){
+        runOnUiThread(() -> {
+            String safeMsg = JSONObject.quote(msg==null?"":msg);
+            String safeBody = JSONObject.quote(body==null?"":body);
+            w.evaluateJavascript("window.growwExpiriesResult("+ok+","+safeMsg+","+safeBody+")",null);
+        });
     }
 
     private void postOptionChain(final boolean ok, final String msg, final String body){
