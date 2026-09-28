@@ -434,7 +434,7 @@ public class MainActivity extends Activity {
 
         private void connectMarketSocket(JSONArray tokens, int exchangeType) {
             closeMarketSocket();
-            wsClient = new OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build();
+            wsClient = new OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).pingInterval(30, TimeUnit.SECONDS).build();
             Request req = new Request.Builder()
                 .url("wss://smartapisocket.angelone.in/smart-stream")
                 .addHeader("Authorization",jwtToken)
