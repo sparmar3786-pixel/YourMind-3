@@ -74,7 +74,7 @@ public class MainActivity extends Activity {
             request(token, "https://api.groww.in/v1/user/detail", "USER PROFILE");
         }
         @JavascriptInterface public void testQuote(final String token) {
-            request(token, "https://api.groww.in/v1/live-data/quote?exchange=NSE&segment=CASH&trading_symbol=NIFTY", "NIFTY LIVE QUOTE");
+            requestQuote(token);
         }
         @JavascriptInterface public void testOptionChain(final String token, final String expiry) {
             String e = expiry == null ? "" : expiry.trim();
@@ -84,6 +84,106 @@ public class MainActivity extends Activity {
             }
             request(token, "https://api.groww.in/v1/option-chain/exchange/NSE/underlying/NIFTY?expiry_date="+e, "NIFTY OPTION CHAIN");
         }
+    }
+
+    private void requestQuote(final String token) {
+        if (token == null || token.trim().isEmpty()) {
+            post(false, "NIFTY LIVE QUOTE: token required");
+            return;
+        }
+        net.execute(() -> {
+            int code = 0;
+            String body = "";
+            HttpURLConnection c = null;
+            try {
+                String quoteUrl = "https://api.groww.in/v1/live-data/quote?exchange=NSE&segment=CASH&trading_symbol=NIFTY";
+                c = (HttpURLConnection)new URL(quoteUrl).openConnection();
+                c.setRequestMethod("GET");
+                c.setConnectTimeout(10000);
+                c.setReadTimeout(10000);
+                c.setRequestProperty("Accept","application/json");
+                c.setRequestProperty("Authorization","Bearer "+token.trim());
+                c.setRequestProperty("X-API-VERSION","1.0");
+                code = c.getResponseCode();
+                InputStream is=code>=200&&code<400?c.getInputStream():c.getErrorStream();
+                body=read(is);
+            } catch(Exception e) {
+                post(false, "NIFTY LIVE QUOTE: connection error • "+e.getClass().getSimpleName());
+                return;
+            } finally { if(c!=null)c.disconnect(); }
+
+            if (code >= 200 && code < 300) {
+                postQuoteSuccess(body, code);
+                return;
+            }
+
+            // Groww may reject the full quote endpoint while the simpler LTP endpoint is permitted.
+            // Try the documented LTP endpoint so index price can still be displayed.
+            HttpURLConnection ltp = null;
+            try {
+                String ltpUrl = "https://api.groww.in/v1/live-data/ltp?segment=CASH&exchange_symbols=NSE_NIFTY";
+                ltp = (HttpURLConnection)new URL(ltpUrl).openConnection();
+                ltp.setRequestMethod("GET");
+                ltp.setConnectTimeout(10000);
+                ltp.setReadTimeout(10000);
+                ltp.setRequestProperty("Accept","application/json");
+                ltp.setRequestProperty("Authorization","Bearer "+token.trim());
+                ltp.setRequestProperty("X-API-VERSION","1.0");
+                int ltpCode=ltp.getResponseCode();
+                InputStream is=ltpCode>=200&&ltpCode<400?ltp.getInputStream():ltp.getErrorStream();
+                String ltpBody=read(is);
+                if (ltpCode >= 200 && ltpCode < 300) {
+                    JSONObject o=new JSONObject(ltpBody);
+                    JSONObject p=o.optJSONObject("payload");
+                    double ltpValue=p==null?Double.NaN:p.optDouble("NSE_NIFTY",Double.NaN);
+                    post(true, "NIFTY LIVE QUOTE: LTP fallback HTTP "+ltpCode+" • LTP="+ltpValue+" • OI unavailable from LTP endpoint");
+                } else {
+                    post(false, "NIFTY LIVE QUOTE: HTTP "+code+" • quote rejected • LTP fallback HTTP "+ltpCode+" • "+extractError(ltpBody, body));
+                }
+            } catch(Exception e) {
+                post(false, "NIFTY LIVE QUOTE: HTTP "+code+" • "+extractError(body,"")+
+                        " • LTP fallback error • "+e.getClass().getSimpleName());
+            } finally { if(ltp!=null)ltp.disconnect(); }
+        });
+    }
+
+    private void postQuoteSuccess(String body, int code) {
+        try {
+            JSONObject o=new JSONObject(body);
+            String s=o.optString("status","");
+            JSONObject p=o.optJSONObject("payload");
+            String details="";
+            if (p != null) {
+                details = " • LTP="+p.optDouble("last_price", Double.NaN)
+                        + " • OI="+p.optDouble("open_interest", Double.NaN)
+                        + " • OIΔ="+p.optDouble("oi_day_change", Double.NaN)
+                        + " • Vol="+p.optDouble("volume", Double.NaN);
+            }
+            post(true, "NIFTY LIVE QUOTE: HTTP "+code+(s.isEmpty()?"":" • "+s)+details+" • connection OK");
+        } catch(Exception e) {
+            post(true, "NIFTY LIVE QUOTE: HTTP "+code+" • response received");
+        }
+    }
+
+    private String extractError(String primary, String secondary) {
+        String body = primary == null || primary.trim().isEmpty() ? secondary : primary;
+        if (body == null || body.trim().isEmpty()) return "no error body returned";
+        try {
+            JSONObject o=new JSONObject(body);
+            String[] keys={"message","error","remark","reason","code"};
+            for(String k:keys) {
+                String v=o.optString(k,"");
+                if(!v.isEmpty()) return k+"="+v;
+            }
+            JSONObject p=o.optJSONObject("payload");
+            if(p!=null) {
+                for(String k:keys) {
+                    String v=p.optString(k,"");
+                    if(!v.isEmpty()) return k+"="+v;
+                }
+            }
+        } catch(Exception ignored) {}
+        return body.length()>180 ? body.substring(0,180) : body;
     }
 
     private void request(final String token, final String url, final String label) {
