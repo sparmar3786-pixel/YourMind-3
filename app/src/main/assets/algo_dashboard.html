@@ -38,7 +38,7 @@ header{position:sticky;top:0;z-index:20;background:rgba(6,10,16,.94);backdrop-fi
 <input id="client" class="input" autocomplete="off" placeholder="Angel One Client Code">
 <input id="pin" class="input" type="password" autocomplete="off" placeholder="Trading PIN">
 <input id="totpSecret" class="input" type="password" autocomplete="off" placeholder="Current 6-digit TOTP OR TOTP Secret">
-<div class="row" style="margin-top:6px"><div class="metric" style="flex:1"><span>AUTO TOTP</span><b id="totpCode">------</b></div><span id="totpTimer" class="badge">--s</span></div>
+<div class="row" style="margin-top:6px"><div class="metric" style="flex:1"><span>TOTP</span><b id="totpCode">------</b></div><span id="totpTimer" class="badge">--s</span></div>
 <input id="apiKey" class="input" type="password" autocomplete="off" placeholder="SmartAPI Private API Key">
 <div class="grid"><input id="publicIp" class="input" placeholder="Registered Public IP *"><input id="mac" class="input" placeholder="Device / Network MAC Address *"></div>
 <button class="btn primary" onclick="angelLogin()">GENERATE TOTP & SECURE LOGIN</button>
@@ -91,12 +91,11 @@ const liveRows=new Map();let liveTicks=0;
 function tab(id){document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));document.getElementById({dash:'tDash',angel:'tAngel',nse:'tNse',mcp:'tMcp',data:'tData',set:'tSet'}[id]).classList.add('on')}
 function angelLogin(){
   if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing. Rebuild APK.');return}
-  const client=v('client'), pin=v('pin'), key=v('apiKey'), ip=v('publicIp'), mac=v('mac'), raw=v('totpSecret').trim();
+  const client=v('client'), pin=v('pin'), key=v('apiKey'), ip=v('publicIp'), mac=v('mac'), code=v('totpSecret').replace(/\D/g,'');
   if(!client||!pin||!key){angelMsg(false,'Client Code, MPIN and SmartAPI API Key are required');return}
-  if(!ip){angelMsg(false,'Registered Public IP is required. Use the static IP registered in Angel One My APIs.');return}
-  if(!mac){angelMsg(false,'MAC Address is required by this SmartAPI login configuration. Enter the value expected by your Angel One API app.');return}
-  let code=/^\\d{6}$/.test(raw) ? raw : AndroidAngel.generateTotp(raw);
-  if(!code){angelMsg(false,'Enter the current 6-digit TOTP, or the TOTP secret for automatic generation');return}
+  if(!/^\d{6}$/.test(code)){angelMsg(false,'Enter the current 6-digit Google Authenticator TOTP');return}
+  if(!ip){angelMsg(false,'Registered Public IP is required for this API configuration');return}
+  if(!mac){angelMsg(false,'MAC Address is required for this API configuration');return}
   document.getElementById('totpCode').textContent=code;
   AndroidAngel.login(client,pin,code,key,ip,'',mac);
 }
