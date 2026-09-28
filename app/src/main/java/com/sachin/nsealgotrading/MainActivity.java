@@ -94,13 +94,15 @@ public class MainActivity extends Activity {
 
     public class NseMcpBridge {
         private volatile String sessionId = null;
-        private static final String MCP_VERSION = "2025-06-18";
+        private static final String MCP_VERSION = "2025-11-25";
 
         @JavascriptInterface public void connect(final String url) {
             try {
                 JSONObject p = new JSONObject();
                 p.put("protocolVersion", MCP_VERSION);
-                p.put("capabilities", new JSONObject());
+                JSONObject caps = new JSONObject();
+                caps.put("tools", new JSONObject());
+                p.put("capabilities", caps);
                 JSONObject client = new JSONObject();
                 client.put("name", "NSE-Algo-Signal");
                 client.put("version", "1.0");
