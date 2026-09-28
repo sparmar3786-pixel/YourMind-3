@@ -252,6 +252,175 @@ public class MainActivity extends Activity {
             postAngel(true, "Session cleared • Logged out");
         }
 
+
+        @JavascriptInterface public void login(final String client, final String pin, final String totp, final String key,
+                                               final String publicIp, final String localIp, final String mac) {
+            if (client == null || pin == null || totp == null || key == null ||
+                client.trim().isEmpty() || pin.trim().isEmpty() || totp.trim().isEmpty() || key.trim().isEmpty()) {
+                postAngel(false, "Login failed • Client Code, PIN, TOTP and API Key are required");
+                return;
+            }
+            net.execute(() -> {
+                HttpURLConnection c = null;
+                try {
+                    JSONObject body = new JSONObject();
+                    body.put("clientcode", client.trim());
+                    body.put("password", pin.trim());
+                    body.put("totp", totp.trim());
+                    c = (HttpURLConnection) new URL(LOGIN_URL).openConnection();
+                    c.setRequestMethod("POST");
+                    c.setConnectTimeout(15000); c.setReadTimeout(20000); c.setDoOutput(true);
+                    setAngelHeaders(c, key.trim(), publicIp, localIp, mac);
+                    OutputStream os = c.getOutputStream(); os.write(body.toString().getBytes("UTF-8")); os.close();
+                    int code = c.getResponseCode();
+                    String raw = read(code >= 200 && code < 400 ? c.getInputStream() : c.getErrorStream());
+                    JSONObject root = parseJson(raw);
+                    boolean ok = code >= 200 && code < 300 && root != null && "true".equalsIgnoreCase(root.optString("status"));
+                    if (ok) {
+                        JSONObject data = root.optJSONObject("data");
+                        jwtToken = data == null ? "" : data.optString("jwtToken", "");
+                        refreshToken = data == null ? "" : data.optString("refreshToken", "");
+                        feedToken = data == null ? "" : data.optString("feedToken", "");
+                        clientCode = client.trim(); apiKey = key.trim();
+                        postAngel(true, "Login successful • JWT READY • Feed Token READY");
+                    } else {
+                        clearSession();
+                        postAngel(false, "Login failed • HTTP "+code+" • "+extractError(raw));
+                    }
+                } catch (Exception e) {
+                    clearSession(); postAngel(false, "Login error • "+e.getClass().getSimpleName()+" • "+safe(e.getMessage()));
+                } finally { if (c != null) c.disconnect(); }
+            });
+        }
+
+        @JavascriptInterface public void setSession(final String client, final String key, final String auth, final String feed) {
+            if (client == null || key == null || auth == null || feed == null ||
+                client.trim().isEmpty() || key.trim().isEmpty() || auth.trim().isEmpty() || feed.trim().isEmpty()) {
+                postAngel(false, "Callback session incomplete • Client Code, API Key, auth token and feed token are required");
+                return;
+            }
+            clientCode = client.trim(); apiKey = key.trim(); jwtToken = auth.trim(); feedToken = feed.trim();
+            refreshToken = "";
+            postAngel(true, "Angel One callback session imported • JWT READY • Feed Token READY");
+        }
+
+        @JavascriptInterface public void loadLive(final String index) {
+            if (jwtToken.isEmpty() || feedToken.isEmpty()) {
+                postMarket(false, "LIVE", "Login to Angel One first");
+                return;
+            }
+            selectedIndex = (index == null || index.trim().isEmpty()) ? "NIFTY" : index.trim().toUpperCase(Locale.US);
+            postMarket(false, "SCRIPT", "Loading Angel One scrip master…");
+            net.execute(this::loadScriptMasterAndSubscribe);
+        }
+
+        @JavascriptInterface public void stopLive() {
+            closeMarketSocket();
+            postMarket(true, "LIVE", "Live feed disconnected");
+        }
+
+        private void loadScriptMasterAndSubscribe() {
+            try {
+                String raw = httpGet("https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json");
+                JSONArray all = new JSONArray(raw);
+                String segment = ("SENSEX".equals(selectedIndex) || "BANKEX".equals(selectedIndex)) ? "BFO" : "NFO";
+                Date today = new Date();
+                SimpleDateFormat df = new SimpleDateFormat("ddMMMyyyy", Locale.ENGLISH);
+                df.setLenient(false);
+                Date nearest = null; String expiry = "";
+                ArrayList<JSONObject> candidates = new ArrayList<>();
+                for (int i=0;i<all.length();i++) {
+                    JSONObject o=all.optJSONObject(i); if(o==null) continue;
+                    if(!segment.equalsIgnoreCase(o.optString("exch_seg",""))) continue;
+                    if(!"OPTIDX".equalsIgnoreCase(o.optString("instrumenttype",""))) continue;
+                    if(!selectedIndex.equalsIgnoreCase(o.optString("name",""))) continue;
+                    String ex=o.optString("expiry",""); if(ex.isEmpty()) continue;
+                    Date d; try { d=df.parse(ex); } catch(Exception bad) { continue; }
+                    if(d.before(today)) continue;
+                    if(nearest==null || d.before(nearest)){nearest=d;expiry=ex;}
+                    candidates.add(o);
+                }
+                if(nearest==null){postMarket(false,"SCRIPT","No active "+selectedIndex+" option contracts found");return;}
+                liveRows.clear();
+                JSONArray tokens=new JSONArray();
+                int count=0;
+                for(JSONObject o:candidates){
+                    if(!expiry.equalsIgnoreCase(o.optString("expiry",""))) continue;
+                    String token=o.optString("token","");
+                    if(token.isEmpty()) continue;
+                    LiveRow row=new LiveRow();
+                    row.token=token; row.symbol=o.optString("symbol","");
+                    row.strike=safeNumber(o.optString("strike","0"))/100.0;
+                    row.type=row.symbol.endsWith("PE")?"PE":(row.symbol.endsWith("CE")?"CE":"");
+                    row.expiry=expiry; liveRows.put(token,row); tokens.put(token);
+                    if(++count>=800) break;
+                }
+                if(tokens.length()==0){postMarket(false,"SCRIPT","No tokens available for "+selectedIndex);return;}
+                connectMarketSocket(tokens, segment.equals("BFO") ? 4 : 2);
+                postMarket(true,"SCRIPT","Loaded "+tokens.length()+" contracts • "+selectedIndex+" • expiry "+expiry);
+            } catch(Exception e) {
+                postMarket(false,"SCRIPT","Scrip master error • "+safe(e.getMessage()));
+            }
+        }
+
+        private void connectMarketSocket(JSONArray tokens, int exchangeType) {
+            closeMarketSocket();
+            wsClient = new OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build();
+            Request req = new Request.Builder()
+                .url("wss://smartapisocket.angelone.in/smart-stream")
+                .addHeader("Authorization","Bearer "+jwtToken)
+                .addHeader("x-api-key",apiKey)
+                .addHeader("x-client-code",clientCode)
+                .addHeader("x-feed-token",feedToken).build();
+            marketSocket = wsClient.newWebSocket(req,new WebSocketListener(){
+                @Override public void onOpen(WebSocket ws, Response response) {
+                    try {
+                        JSONObject q=new JSONObject(); q.put("correlationID","nsealgo01"); q.put("action",1);
+                        JSONObject p=new JSONObject(); p.put("mode",3);
+                        JSONArray list=new JSONArray(); JSONObject group=new JSONObject();
+                        group.put("exchangeType",exchangeType); group.put("tokens",tokens); list.put(group);
+                        p.put("tokenList",list); q.put("params",p); ws.send(q.toString());
+                        postMarket(true,"LIVE","WebSocket connected • SnapQuote subscription sent");
+                        heartbeat.removeCallbacksAndMessages(null);
+                        heartbeat.postDelayed(new Runnable(){@Override public void run(){
+                            try{if(marketSocket!=null)marketSocket.send("ping");}catch(Exception ignored){}
+                            if(marketSocket!=null)heartbeat.postDelayed(this,25000);
+                        }},25000);
+                    }catch(Exception e){postMarket(false,"LIVE","Subscription error • "+safe(e.getMessage()));}
+                }
+                @Override public void onMessage(WebSocket ws, okio.ByteString bytes){parseLivePacket(bytes.toByteArray());}
+                @Override public void onMessage(WebSocket ws,String text){postMarket(false,"WS",text.length()>180?text.substring(0,180):text);}
+                @Override public void onFailure(WebSocket ws,Throwable t,Response r){postMarket(false,"LIVE","WebSocket error • "+safe(t.getMessage()));}
+                @Override public void onClosed(WebSocket ws,int code,String reason){postMarket(false,"LIVE","WebSocket closed • "+code);}
+            });
+        }
+
+        private void parseLivePacket(byte[] b) {
+            try {
+                if(b==null || b.length<51) return;
+                int mode=b[0]&255; String token=readToken(b); LiveRow row=liveRows.get(token); if(row==null)return;
+                long ltpRaw=leLong(b,43); double ltp=ltpRaw/100.0; double old=row.ltp;
+                row.ltp=ltp; row.priceDelta=old==0?0:ltp-old;
+                if(mode>=2 && b.length>=123){row.volume=leLong(b,67);}
+                if(mode>=3 && b.length>=147){long oldOi=row.oi;row.oi=leLong(b,131);row.oiDelta=oldOi==0?0:row.oi-oldOi;}
+                String js="window.angelMarketTick&&window.angelMarketTick("+JSONObject.quote(row.toJson())+");";
+                runOnUiThread(()->{if(w!=null)w.evaluateJavascript(js,null);});
+            }catch(Exception ignored){}
+        }
+
+        private void closeMarketSocket(){
+            heartbeat.removeCallbacksAndMessages(null);
+            try{if(marketSocket!=null)marketSocket.close(1000,"stop");}catch(Exception ignored){}
+            marketSocket=null;
+            try{if(wsClient!=null)wsClient.dispatcher().executorService().shutdown();}catch(Exception ignored){}
+            wsClient=null;
+        }
+
+        private String readToken(byte[] b){int e=2;while(e<27&&b[e]!=0)e++;try{return new String(b,2,e-2,"UTF-8");}catch(Exception ex){return "";}}
+        private long leLong(byte[] b,int p){long v=0;for(int i=0;i<8&&p+i<b.length;i++)v|=((long)b[p+i]&255L)<<(8*i);return v;}
+        private double safeNumber(String s){try{return Double.parseDouble(s);}catch(Exception e){return 0;}}
+        private String httpGet(String u)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setConnectTimeout(20000);c.setReadTimeout(30000);c.setRequestProperty("Accept","application/json");try{return read(c.getInputStream());}finally{c.disconnect();}}
+
         private void clearSession() {
             jwtToken = "";
             refreshToken = "";
