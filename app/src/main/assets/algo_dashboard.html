@@ -101,44 +101,57 @@ function handleNseTick(raw){
 }
 
 
-let mcpSessionId=null,mcpId=100,mcpTools=[];
-async function mcpRequest(method,params){
+let mcpSessionId=null,mcpTools=[],mcpPendingTools=false;
+function nseMcpConnect(){
  const u=document.getElementById('mcpUrl').value.trim();
- const h={'Content-Type':'application/json','Accept':'application/json, text/event-stream'};
- if(mcpSessionId)h['Mcp-Session-Id']=mcpSessionId;
- const r=await fetch(u,{method:'POST',headers:h,body:JSON.stringify({jsonrpc:'2.0',id:++mcpId,method,params:params||{}})});
- const sid=r.headers.get('Mcp-Session-Id'); if(sid)mcpSessionId=sid;
- const txt=await r.text();
- const lines=txt.split(/\r?\n/).filter(x=>x.startsWith('data:')).map(x=>x.slice(5).trim()).filter(Boolean);
- try{return JSON.parse(lines[lines.length-1]||txt)}catch(e){return {raw:txt,status:r.status}}
+ if(!u.startsWith('https://')){document.getElementById('mcpStatus').textContent='Use official HTTPS NSE MCP URL.';return}
+ if(!window.AndroidNseMcp){document.getElementById('mcpStatus').textContent='Native NSE MCP bridge unavailable. Rebuild APK.';return}
+ document.getElementById('mcpBadge').textContent='CONNECTING...';
+ document.getElementById('mcpStatus').textContent='Connecting through native Android network (CORS bypass)...';
+ AndroidNseMcp.connect(u);
 }
-async function nseMcpConnect(){
- try{
-  document.getElementById('mcpBadge').textContent='CONNECTING...';
-  let r=await mcpRequest('initialize',{protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:'NSE-Algo-Signal',version:'1.0'}});
-  if(r.error)throw new Error(r.error.message||'initialize failed');
-  try{await mcpRequest('notifications/initialized',{})}catch(e){}
-  document.getElementById('mcpBadge').textContent='CONNECTED';
-  document.getElementById('mcpStatus').textContent='Official NSE MCP connected. Loading tools...';
-  await nseMcpTools();
- }catch(e){document.getElementById('mcpBadge').textContent='ERROR';document.getElementById('mcpStatus').textContent='MCP connection failed: '+e.message+' (WebView/network/CORS may block direct access).'}
+function nseMcpTools(){
+ const u=document.getElementById('mcpUrl').value.trim();
+ if(!window.AndroidNseMcp){document.getElementById('mcpStatus').textContent='Native NSE MCP bridge unavailable. Rebuild APK.';return}
+ document.getElementById('mcpStatus').textContent='Requesting tools/list...';
+ AndroidNseMcp.listTools(u);
 }
-async function nseMcpTools(){
- try{
-  if(!mcpSessionId)await nseMcpConnect();
-  let r=await mcpRequest('tools/list',{});
-  if(r.error)throw new Error(r.error.message||'tools/list failed');
-  mcpTools=(r.result&&r.result.tools)||[];
-  let s=document.getElementById('mcpTool');s.innerHTML='';
-  mcpTools.forEach((t,i)=>{let o=document.createElement('option');o.value=String(i);o.textContent=t.name+(t.description?' — '+t.description.slice(0,90):'');s.appendChild(o)});
-  document.getElementById('mcpToolCount').textContent=mcpTools.length;
-  document.getElementById('mcpStatus').textContent='Tools loaded successfully.';
- }catch(e){document.getElementById('mcpStatus').textContent='Tool discovery failed: '+e.message}
-}
-async function nseMcpCall(){
+function nseMcpCall(){
  const i=Number(document.getElementById('mcpTool').value),t=mcpTools[i];if(!t)return;
  let args={};try{args=JSON.parse(document.getElementById('mcpArgs').value||'{}')}catch(e){document.getElementById('mcpResult').textContent='Invalid JSON arguments.';return}
- try{let r=await mcpRequest('tools/call',{name:t.name,arguments:args});document.getElementById('mcpResult').textContent=JSON.stringify(r,null,2)}catch(e){document.getElementById('mcpResult').textContent='Tool call failed: '+e.message}
+ AndroidNseMcp.callTool(document.getElementById('mcpUrl').value.trim(),t.name,JSON.stringify(args));
+ document.getElementById('mcpResult').textContent='Calling '+t.name+'...';
+}
+window.nseMcpNativeResult=function(ok,method,code,raw,sid){
+ mcpSessionId=sid||mcpSessionId;
+ let obj=null;try{obj=JSON.parse(raw)}catch(e){
+   const ds=String(raw||'').split(/\r?\n/).filter(x=>x.trim().startsWith('data:')).map(x=>x.replace(/^data:\s*/,'').trim()).filter(Boolean);
+   try{obj=JSON.parse(ds[ds.length-1]||raw)}catch(e2){}
+ }
+ if(!ok){
+   document.getElementById('mcpBadge').textContent='ERROR';
+   document.getElementById('mcpStatus').textContent='NSE MCP HTTP '+code+' • '+(obj?.error?.message||raw||'request failed');
+   return;
+ }
+ if(method==='initialize'){
+   document.getElementById('mcpBadge').textContent='CONNECTED';
+   document.getElementById('mcpStatus').textContent='MCP initialized. Loading tools...';
+   nseMcpTools();
+   return;
+ }
+ if(method==='tools/list'){
+   mcpTools=(obj?.result?.tools)||[];
+   const s=document.getElementById('mcpTool');s.innerHTML='';
+   mcpTools.forEach((t,i)=>{let o=document.createElement('option');o.value=String(i);o.textContent=t.name+(t.description?' — '+t.description.slice(0,90):'');s.appendChild(o)});
+   document.getElementById('mcpToolCount').textContent=mcpTools.length;
+   document.getElementById('mcpStatus').textContent='Tools loaded successfully • '+mcpTools.length+' tool(s).';
+   if(!mcpTools.length)document.getElementById('mcpStatus').textContent='Connected, but this MCP endpoint returned 0 tools.';
+   return;
+ }
+ if(method==='tools/call'){
+   document.getElementById('mcpResult').textContent=JSON.stringify(obj||raw,null,2);
+   document.getElementById('mcpStatus').textContent='Tool response received.';
+ }
 }
 
 function tab(x){document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(x).classList.add('on');document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));document.getElementById(x==='dash'?'tbDash':x==='nse'?'tbNse':x==='mcp'?'tbMcp':x==='back'?'tbBack':'tbGroww').classList.add('on')}
