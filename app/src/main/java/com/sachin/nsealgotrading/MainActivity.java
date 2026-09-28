@@ -42,7 +42,8 @@ public class MainActivity extends Activity {
                 fileCallback = callback;
                 Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 i.addCategory(Intent.CATEGORY_OPENABLE);
-                i.setType("text/csv");
+                i.setType("*/*");
+                i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"text/csv","application/csv","application/vnd.ms-excel"});
                 i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                 startActivityForResult(i, FILE_PICKER);
                 return true;
@@ -75,6 +76,14 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void testQuote(final String token) {
             request(token, "https://api.groww.in/v1/live-data/quote?exchange=NSE&segment=CASH&trading_symbol=NIFTY", "NIFTY LIVE QUOTE");
         }
+        @JavascriptInterface public void testOptionChain(final String token, final String expiry) {
+            String e = expiry == null ? "" : expiry.trim();
+            if (!e.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                post(false, "OPTION CHAIN: expiry must be YYYY-MM-DD");
+                return;
+            }
+            request(token, "https://api.groww.in/v1/option-chain/exchange/NSE/underlying/NIFTY?expiry_date="+e, "NIFTY OPTION CHAIN");
+        }
     }
 
     private void request(final String token, final String url, final String label) {
@@ -93,9 +102,31 @@ public class MainActivity extends Activity {
                 InputStream is=code>=200&&code<400?c.getInputStream():c.getErrorStream();
                 String body=read(is);
                 String status="HTTP "+code;
-                try { JSONObject o=new JSONObject(body); String s=o.optString("status",""); if(!s.isEmpty()) status+=" • "+s; } catch(Exception ignored){}
+                String details="";
+                try {
+                    JSONObject o=new JSONObject(body);
+                    String s=o.optString("status","");
+                    if(!s.isEmpty()) status+=" • "+s;
+                    JSONObject p=o.optJSONObject("payload");
+                    if (p != null) {
+                        if (label.contains("LIVE QUOTE")) {
+                            details = " • LTP="+p.optDouble("last_price", Double.NaN)
+                                    + " • OI="+p.optDouble("open_interest", Double.NaN)
+                                    + " • OIΔ="+p.optDouble("oi_day_change", Double.NaN)
+                                    + " • Vol="+p.optDouble("volume", Double.NaN);
+                        } else if (label.contains("OPTION CHAIN")) {
+                            JSONObject strikes=p.optJSONObject("strikes");
+                            details = " • strikes="+(strikes==null?0:strikes.length())
+                                    + " • underlying LTP="+p.optDouble("underlying_ltp", Double.NaN);
+                        } else if (label.contains("USER PROFILE")) {
+                            details = " • NSE="+p.optBoolean("nse_enabled",false)
+                                    + " • BSE="+p.optBoolean("bse_enabled",false)
+                                    + " • segments="+p.optJSONArray("active_segments");
+                        }
+                    }
+                } catch(Exception ignored){}
                 boolean ok=code>=200&&code<300;
-                post(ok,label+": "+status+(ok?" • connection OK":" • request rejected"));
+                post(ok,label+": "+status+details+(ok?" • connection OK":" • request rejected"));
             } catch(Exception e) {
                 post(false,label+": connection error • "+e.getClass().getSimpleName());
             } finally { if(c!=null)c.disconnect(); }
