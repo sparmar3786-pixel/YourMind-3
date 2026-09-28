@@ -63,7 +63,30 @@ public class MainActivity extends Activity {
         w.addJavascriptInterface(new NseBridge(), "AndroidNSE");
         w.addJavascriptInterface(new NseMcpBridge(), "AndroidNseMcp");
         setContentView(w);
-        w.loadUrl("https://appassets.androidplatform.net/assets/algo_dashboard.html");
+        w.loadUrl("https://appassets.androidplatform.net/assets/algo_dashboard.html");\n        handleAngelCallback(getIntent());
+    }
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleAngelCallback(intent);
+    }
+
+    private void handleAngelCallback(Intent intent) {
+        if (intent == null || intent.getData() == null || w == null) return;
+        Uri uri = intent.getData();
+        if (!"nsealgosignal".equalsIgnoreCase(uri.getScheme()) ||
+            !"angel-callback".equalsIgnoreCase(uri.getHost())) return;
+
+        String authToken = uri.getQueryParameter("auth_token");
+        String feedToken = uri.getQueryParameter("feed_token");
+        String state = uri.getQueryParameter("state");
+
+        String js = "window.handleAngelCallback && window.handleAngelCallback(" +
+            JSONObject.quote(authToken == null ? "" : authToken) + "," +
+            JSONObject.quote(feedToken == null ? "" : feedToken) + "," +
+            JSONObject.quote(state == null ? "" : state) + ");";
+        w.post(() -> w.evaluateJavascript(js, null));
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
