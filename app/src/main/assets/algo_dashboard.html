@@ -1,269 +1,103 @@
 <!doctype html>
-<html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>NSE Algo Signal</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#070b10;color:#edf3f8;font:14px Arial,sans-serif}header{padding:14px;background:#0e151e;position:sticky;top:0;z-index:5;border-bottom:1px solid #1e2a36}.wrap{max-width:720px;margin:auto;padding:10px 12px 78px}h1{font-size:20px;margin:0}.muted{color:#8794a3}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 0}.tabs button,.btn{border:1px solid #243244;border-radius:11px;background:#131d29;color:#fff;padding:11px;font-weight:700}.tabs button.on{background:#1c344b}.page{display:none}.page.on{display:block}.card{background:#101821;border:1px solid #1f2b38;border-radius:15px;padding:14px;margin:9px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metric{background:#0a1119;padding:10px;border-radius:11px}.metric b{display:block;font-size:17px;margin-top:4px}.ok{color:#2ee889}.bad{color:#ff6574}.warn{color:#ffc45a}.pill{padding:5px 8px;border-radius:20px;background:#192535}.row{display:flex;justify-content:space-between;gap:8px;align-items:center}.big{font-size:26px;font-weight:800}.input{width:100%;padding:11px;border-radius:10px;border:1px solid #29384a;background:#080e15;color:#fff;margin:6px 0}.btn{width:100%;margin-top:7px}.table{width:100%;border-collapse:collapse;font-size:12px}.table th,.table td{padding:8px;border-bottom:1px solid #22303e;text-align:left}.file{display:block;border:1px dashed #36516b;padding:14px;border-radius:12px;text-align:center;margin:7px 0}.small{font-size:12px}.bottom{position:fixed;bottom:0;left:0;right:0;background:#0c131b;padding:8px;z-index:6;text-align:center;color:#8391a0;font-size:11px}
-</style></head><body>
-<header><div class="row"><h1>NSE Algo Signal</h1><span id="market" class="pill ok">IST --</span></div><div class="muted">Groww Live Data + Option Chain + CSV Backtest</div></header>
+:root{--bg:#060a10;--panel:#0d141e;--panel2:#111b27;--line:#203042;--txt:#eef5fb;--muted:#8c9bad;--green:#27e58a;--red:#ff6576;--gold:#ffc857;--blue:#55a9ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% -10%,#18304a 0,#060a10 38%);color:var(--txt);font:14px Inter,Arial,sans-serif}
+header{position:sticky;top:0;z-index:20;background:rgba(6,10,16,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.top{max-width:900px;margin:auto;padding:15px 14px 12px}.brand{display:flex;align-items:center;gap:10px}.logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(145deg,#173c61,#0b1725);border:1px solid #315b80;display:grid;place-items:center;font-weight:900;color:#7dc1ff}.title{font-size:20px;font-weight:900}.sub{font-size:11px;color:var(--muted);margin-top:2px}.live{margin-left:auto;padding:7px 10px;border-radius:99px;background:#10271e;color:var(--green);font-size:11px;font-weight:800}
+.wrap{max-width:900px;margin:auto;padding:12px 12px 85px}.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px}.tabs button,.btn{border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--txt);padding:11px 9px;font-weight:800}.tabs button.on{background:#17314a;border-color:#2e5d86;color:#fff}
+.page{display:none}.page.on{display:block}.card{background:linear-gradient(145deg,rgba(17,27,39,.98),rgba(10,16,24,.98));border:1px solid var(--line);border-radius:18px;padding:15px;margin:10px 0;box-shadow:0 12px 30px rgba(0,0,0,.18)}.hero{padding:18px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.eyebrow{font-size:10px;letter-spacing:1.2px;color:var(--muted);font-weight:900}.signal{font-size:26px;font-weight:950;margin:7px 0}.green{color:var(--green)}.red{color:var(--red)}.gold{color:var(--gold)}.muted{color:var(--muted)}.small{font-size:11px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.metric{background:#080e16;border:1px solid #172536;border-radius:13px;padding:11px}.metric span{font-size:10px;color:var(--muted);display:block}.metric b{font-size:17px;display:block;margin-top:5px}.btn{width:100%;margin-top:8px}.btn.primary{background:linear-gradient(135deg,#1767a8,#124574);border-color:#3984bc}.btn.danger{background:#2a1319;color:#ff9aa5}.input,textarea,select{width:100%;padding:12px;border-radius:12px;border:1px solid #26384b;background:#070d14;color:#fff;margin:6px 0;outline:none}.input:focus,textarea:focus,select:focus{border-color:#3e81b6}.badge{padding:6px 9px;border-radius:99px;background:#172331;color:var(--muted);font-size:10px;font-weight:900}.badge.ok{background:#10271e;color:var(--green)}.badge.warn{background:#2a2414;color:var(--gold)}.badge.bad{background:#2b151b;color:var(--red)}.status{margin-top:9px;padding:11px;border-radius:12px;background:#080e15;border:1px solid #172536;color:var(--muted);line-height:1.45}.sectionTitle{font-size:16px;font-weight:900}.list{display:grid;gap:7px}.item{display:flex;justify-content:space-between;gap:10px;padding:10px;border:1px solid #1a2939;border-radius:12px;background:#0a1119}.bottom{position:fixed;bottom:0;left:0;right:0;z-index:30;background:rgba(7,12,18,.96);border-top:1px solid var(--line);padding:9px;text-align:center;color:#738397;font-size:10px}
+@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}.tabs{grid-template-columns:repeat(6,1fr)}}
+</style>
+</head>
+<body>
+<header><div class="top"><div class="brand"><div class="logo">N</div><div><div class="title">NSE Algo Signal</div><div class="sub">Angel One SmartAPI • NSE MCP • Analytics Engine</div></div><span id="market" class="live">IST --</span></div></div></header>
 <main class="wrap">
-<div class="tabs"><button id="tbDash" class="on" onclick="tab('dash')">Dashboard</button><button id="tbNse" onclick="tab('nse')">NSE Direct Live</button><button id="tbMcp" onclick="tab('mcp')">NSE MCP</button><button id="tbBack" onclick="tab('back')">Backtest</button><button id="tbGroww" onclick="tab('groww')">Groww API</button></div>
+<div class="tabs">
+<button id="tDash" class="on" onclick="tab('dash')">Dashboard</button>
+<button id="tAngel" onclick="tab('angel')">Angel API</button>
+<button id="tNse" onclick="tab('nse')">NSE</button>
+<button id="tMcp" onclick="tab('mcp')">NSE MCP</button>
+<button id="tData" onclick="tab('data')">Data</button>
+<button id="tSet" onclick="tab('set')">Settings</button>
+</div>
 
 <section id="dash" class="page on">
-<div class="card"><div class="row"><b>NIFTY</b><span class="pill">5 MIN</span></div><div id="signal" class="big ok">WAITING FOR LIVE DATA</div><p class="muted">No signal is generated until real market data is confirmed.</p>
-<div class="grid"><div class="metric">LTP<b id="ltp">--</b></div><div class="metric">OI Change<b id="oi">--</b></div><div class="metric">ENTRY<b>--</b></div><div class="metric">SL<b>--</b></div><div class="metric">TARGET<b>--</b></div><div class="metric">R:R<b>--</b></div></div></div>
-<div class="card"><div class="row"><b>PDF fields mapped</b><span class="pill">Groww</span></div><div class="grid"><div class="metric">LTP<b>✓</b></div><div class="metric">OI<b>✓</b></div><div class="metric">OI Δ<b>✓</b></div><div class="metric">Volume<b>✓</b></div><div class="metric">Depth<b>✓</b></div><div class="metric">Greeks<b>✓</b></div></div></div>
-<div class="card"><b>Connection state</b><p id="dashState" class="muted">Groww API not tested in this APK session.</p></div>
-<div class="card"><div class="row"><b>OPTION CHAIN • LIVE</b><span id="ocBadge" class="pill warn">SELECT INDEX</span></div>
-<p class="muted small">Select NIFTY, BANKNIFTY, FINNIFTY or SENSEX. The APK fetches the selected exchange's option chain from Groww; no values are fabricated.</p>
-<div class="grid">
-<button class="btn" onclick="selectOC('NSE','NIFTY')">NIFTY</button>
-<button class="btn" onclick="selectOC('NSE','BANKNIFTY')">BANKNIFTY</button>
-<button class="btn" onclick="selectOC('NSE','FINNIFTY')">FINNIFTY</button>
-<button class="btn" onclick="selectOC('BSE','SENSEX')">SENSEX</button>
-</div>
-<select id="ocExpiry" class="input"><option value="">Select expiry</option></select>
-<button class="btn" onclick="loadSelectedOC()">LOAD OPTION CHAIN</button>
-<div id="ocUnderlying" class="metric" style="margin-top:8px">Underlying LTP<b>--</b></div>
-<div id="ocStatus" class="small muted">Enter Groww Access Token in Groww API tab, then select an index.</div>
-<div style="overflow:auto;margin-top:8px"><table class="table"><thead><tr><th>Strike</th><th>CE LTP</th><th>CE OI</th><th>CE Vol</th><th>PE LTP</th><th>PE OI</th><th>PE Vol</th></tr></thead><tbody id="ocRows"><tr><td colspan="7" class="muted">No option-chain data loaded.</td></tr></tbody></table></div>
-</div>
+<div class="card hero"><div class="row"><div><div class="eyebrow">MARKET ENGINE</div><div class="signal" id="mainState">READY TO CONNECT</div></div><span id="connBadge" class="badge warn">OFFLINE</span></div><p class="muted small">No signal is fabricated. Analysis starts only after verified data reaches the app.</p>
+<div class="grid"><div class="metric"><span>DATA SOURCE</span><b id="source">--</b></div><div class="metric"><span>SESSION</span><b id="session">--</b></div><div class="metric"><span>NIFTY</span><b id="nifty">--</b></div><div class="metric"><span>ATM</span><b id="atm">--</b></div></div></div>
+<div class="card"><div class="row"><div class="sectionTitle">Connection Center</div><span class="badge">STEP 1</span></div><div class="list" style="margin-top:10px"><div class="item"><span>Angel One SmartAPI</span><span id="aMini" class="green">Not connected</span></div><div class="item"><span>NSE MCP</span><span id="mMini">Not connected</span></div><div class="item"><span>Licensed NSE feed</span><span class="muted">Not configured</span></div></div><button class="btn primary" onclick="tab('angel')">CONNECT ANGEL ONE</button></div>
+<div class="card"><div class="sectionTitle">Build Status</div><p class="muted small">Groww integration removed from the active UI and native broker bridge. NSE remains available through the existing NSE server/MCP architecture. New trading features will be added one-by-one after this base is stable.</p></div>
+</section>
+
+<section id="angel" class="page">
+<div class="card hero"><div class="row"><div><div class="eyebrow">BROKER CONNECTION</div><div class="sectionTitle">Angel One SmartAPI</div></div><span id="angelBadge" class="badge warn">NOT CONNECTED</span></div>
+<p class="muted small">The supplied SmartAPI documentation specifies client code + PIN + TOTP authentication and returns JWT, refresh token and feed token. Credentials are used only for the current APK session.</p>
+<input id="client" class="input" autocomplete="off" placeholder="Angel One Client Code">
+<input id="pin" class="input" type="password" autocomplete="off" placeholder="Trading PIN">
+<input id="totp" class="input" inputmode="numeric" autocomplete="one-time-code" placeholder="TOTP">
+<input id="apiKey" class="input" type="password" autocomplete="off" placeholder="SmartAPI Private API Key">
+<button class="btn primary" onclick="angelLogin()">SECURE LOGIN</button>
+<button class="btn" onclick="angelProfile()">VERIFY PROFILE / API ACCESS</button>
+<button class="btn" onclick="angelFeed()">CHECK FEED TOKEN</button>
+<button class="btn danger" onclick="angelLogout()">LOGOUT / CLEAR SESSION</button>
+<div id="angelStatus" class="status">Enter your own Angel One credentials. Never send PIN, TOTP or API key in chat.</div></div>
+<div class="card"><div class="sectionTitle">Session</div><div class="grid"><div class="metric"><span>AUTH</span><b id="authState">--</b></div><div class="metric"><span>JWT</span><b id="jwtState">--</b></div><div class="metric"><span>FEED TOKEN</span><b id="feedState">--</b></div><div class="metric"><span>PROFILE</span><b id="profileState">--</b></div></div></div>
 </section>
 
 <section id="nse" class="page">
-<div class="card"><div class="row"><h2 style="margin:0">NSE Real-Time L1/L2</h2><span id="nseBadge" class="pill warn">FEED NOT CONNECTED</span></div>
-<p class="muted small">Official NSE real-time feed is expected through your licensed NSE feed/data-vendor backend. The APK connects to that backend over secure WebSocket; it does not contain NSE credentials.</p>
-<input id="nseWs" class="input" placeholder="wss://your-secure-feed.example/ws">
-<button class="btn" onclick="connectNseWs()">CONNECT REAL-TIME FEED</button><button class="btn" onclick="disconnectNseWs()">DISCONNECT</button>
-<div class="grid"><div class="metric">Ticks<b id="nseTicks">0</b></div><div class="metric">Last Tick<b id="nseLast">--</b></div><div class="metric">5m Open<b id="cOpen">--</b></div><div class="metric">5m High<b id="cHigh">--</b></div><div class="metric">5m Low<b id="cLow">--</b></div><div class="metric">5m Close<b id="cClose">--</b></div></div>
-<div id="nseRtStatus" class="small muted">No real-time WebSocket backend configured.</div></div>
-<div class="card"><div class="row"><h2 style="margin:0">NSE Direct Live</h2><span class="pill">SERVER CHECK</span></div>
-<p class="muted small">This page is reserved for an official NSE real-time feed. It does not use Groww credentials and it never fabricates LTP/OI values.</p>
-<div class="grid">
-<div class="metric">NIFTY LTP<b id="nseNifty">--</b></div><div class="metric">BANKNIFTY<b id="nseBank">--</b></div>
-<div class="metric">FINNIFTY<b id="nseFin">--</b></div><div class="metric">SENSEX<b id="nseSensex">--</b></div>
-</div>
-<button class="btn" onclick="checkNseStatus()">CHECK NSE CONNECTION</button>
-<div id="nseStatus" class="card"><span class="muted">No NSE licensed feed is configured.</span></div></div>
-<div class="card"><b>Important</b><p class="small muted">NSE's current real-time product is delivered as a licensed feed (including leased-line multicast) or through an authorized data vendor. Snapshot/EOD products use separate delivery mechanisms. A normal public HTTP URL cannot be treated as the NSE real-time feed.</p></div>
+<div class="card"><div class="row"><div class="sectionTitle">NSE Connection</div><span id="nseBadge" class="badge warn">CHECK ONLY</span></div>
+<p class="muted small">This check confirms that the NSE website is reachable. It does not claim a zero-delay F&O feed.</p>
+<button class="btn primary" onclick="checkNse()">CHECK NSE SERVER</button><div id="nseStatus" class="status">Not checked.</div></div>
+<div class="card"><div class="sectionTitle">Real-time feed slot</div><p class="muted small">The app keeps a secure slot for an authorized NSE/data-vendor backend. No NSE private credentials are embedded in the APK.</p><div class="metric"><span>FEED</span><b>Not configured</b></div></div>
 </section>
 
 <section id="mcp" class="page">
-<div class="card"><div class="row"><h2 style="margin:0">NSE Free MCP</h2><span id="mcpBadge" class="pill warn">NOT CONNECTED</span></div>
-<p class="muted small">Official NSE MCP connection. No NSE credentials are stored in this APK. NSE currently describes CM Market Live as approximately 1–3 minutes behind real-time and for educational/informational, non-commercial use.</p>
-<input id="mcpUrl" class="input" value="https://mcp.nseindia.in/cmmkt/mcp" placeholder="NSE MCP URL">
-<button class="btn" onclick="nseMcpConnect()">CONNECT NSE MCP</button>
-<button class="btn" onclick="nseMcpTools()">LIST MCP TOOLS</button>
-<div id="mcpStatus" class="small muted">Not connected.</div>
-<div class="metric" style="margin-top:8px">Available tools<b id="mcpToolCount">0</b></div>
-<select id="mcpTool" class="input"><option value="">Connect first</option></select>
-<textarea id="mcpArgs" class="input" style="min-height:100px" placeholder='Tool arguments JSON, e.g. {"symbol":"NIFTY"}'></textarea>
-<button class="btn" onclick="nseMcpCall()">CALL SELECTED TOOL</button>
-<pre id="mcpResult" class="small" style="white-space:pre-wrap;overflow:auto;max-height:320px"></pre>
-</div>
-<div class="card"><b>Data policy</b><p class="small muted">This MCP integration is separate from the licensed NSE F&O real-time feed. It does not claim zero-delay F&O data and does not bypass NSE licensing.</p></div>
-</section>
-<section id="back" class="page">
-<div class="card"><h2>CSV Snapshot Backtest</h2><p class="muted small">Chronological snapshots only. The engine uses premium and OI changes and checks the next snapshot. It supports CE and PE and classifies long buildup, short covering, short/writing pressure and long unwinding. It never fabricates missing data.</p>
-<label class="file">＋ Add NSE CSV snapshot<input id="csvFiles" type="file" accept=".csv,text/csv" multiple hidden></label>
-<div id="fileList" class="small muted">No snapshots loaded.</div>
-<button class="btn" onclick="runBacktest()">RUN BACKTEST</button><button class="btn" onclick="clearBT()">CLEAR</button>
-</div>
-<div class="card"><div class="grid"><div class="metric">Trades<b id="trades">0</b></div><div class="metric">Wins<b id="wins">0</b></div><div class="metric">Losses<b id="losses">0</b></div><div class="metric">Open/Unverified<b id="open">0</b></div><div class="metric">Win rate<b id="rate">--</b></div><div class="metric">Net points<b id="net">0</b></div></div></div>
-<div class="card"><h3>Signal results</h3><div id="btRows" class="small muted">Run after adding snapshots.</div></div>
+<div class="card"><div class="row"><div class="sectionTitle">NSE MCP</div><span id="mcpBadge" class="badge warn">NOT CONNECTED</span></div>
+<input id="mcpUrl" class="input" value="https://mcp.nseindia.in/cmmkt/mcp">
+<button class="btn primary" onclick="mcpConnect()">CONNECT NSE MCP</button><button class="btn" onclick="mcpTools()">REFRESH TOOLS</button>
+<div id="mcpStatus" class="status">Official NSE MCP connector.</div>
+<div class="metric" style="margin-top:8px"><span>TOOLS</span><b id="toolCount">0</b></div>
+<select id="tool" class="input"><option value="">No tools</option></select>
+<textarea id="args" class="input" rows="4" placeholder='Tool arguments JSON'></textarea>
+<button class="btn" onclick="mcpCall()">CALL TOOL</button>
+<pre id="result" class="status" style="white-space:pre-wrap;max-height:280px;overflow:auto"></pre></div>
 </section>
 
-<section id="groww" class="page">
-<div class="card"><h2>Groww API Connection</h2><p class="muted small">Your Access Token is used only for this session. Do not paste it into chat. Current API requires Bearer token, Accept: application/json and X-API-VERSION: 1.0.</p>
-<input id="token" class="input" type="password" autocomplete="off" placeholder="Groww Access Token">
-<button class="btn" onclick="testGroww()">TEST USER PROFILE</button>
-<button class="btn" onclick="testQuote()">TEST NIFTY LIVE QUOTE</button><button id="liveBtn" class="btn" onclick="startLive()">START LIVE • 5s</button><button class="btn" onclick="stopLive()">STOP LIVE</button>
-<input id="expiry" class="input" value="" placeholder="Option expiry YYYY-MM-DD (legacy test)">
-<button class="btn" onclick="testOptionChain()">TEST NIFTY OPTION CHAIN</button>
-<div id="growwStatus" class="card"><span class="muted">Not tested.</span></div></div>
-<div class="card"><b>What is connected</b><div class="small muted"><p>✓ User Profile endpoint</p><p>✓ NIFTY live quote endpoint</p><p>✓ NIFTY option-chain endpoint</p><p>✓ PDF fields: LTP, OI, OI change, volume, depth, Greeks</p><p>✓ Token is not persisted by the native bridge</p><p>✗ Actual live connection cannot be confirmed until a valid token is tested in the installed APK</p></div></div>
+<section id="data" class="page">
+<div class="card"><div class="sectionTitle">Market Data Workspace</div><p class="muted small">Feature modules will be added here step-by-step. For now the app keeps the upload pipeline ready for CSV, Excel, PDF and images.</p>
+<label class="btn" style="display:block;text-align:center">＋ SELECT MARKET FILES<input id="files" type="file" multiple hidden accept=".csv,.xls,.xlsx,.pdf,image/*"></label>
+<div id="fileStatus" class="status">No files selected.</div></div>
+<div class="card"><div class="sectionTitle">Analysis Engine</div><div class="grid"><div class="metric"><span>CALL</span><b>WAIT</b></div><div class="metric"><span>PUT</span><b>WAIT</b></div><div class="metric"><span>OI</span><b>READY</b></div><div class="metric"><span>EMA</span><b>READY</b></div></div><p class="muted small">Entry / SL / Target logic will be connected after the data contract is finalized.</p></div>
 </section>
-</main><div class="bottom">Educational analytics only • No automatic order execution</div>
+
+<section id="set" class="page">
+<div class="card"><div class="sectionTitle">App Settings</div><button class="btn" onclick="document.body.classList.toggle('bright')">TOGGLE APPEARANCE</button><div class="status">Version 1.1 • Broker: Angel One • NSE connector retained • Groww UI removed.</div></div>
+<div class="card"><div class="sectionTitle">Security</div><p class="muted small">The native bridge does not persist the Angel JWT, refresh token, feed token or API key to disk. Logout clears the in-memory session.</p></div>
+</section>
+</main>
+<div class="bottom">Educational analytics • No automatic order execution • Real data only</div>
 <script>
-let snaps=[];
-let nseWs=null,nseTickCount=0,nseCandle={bucket:null,o:null,h:null,l:null,c:null};
-function connectNseWs(){
- const url=document.getElementById('nseWs').value.trim();
- if(!/^wss:\/\//i.test(url)){document.getElementById('nseRtStatus').textContent='Use a secure wss:// licensed-feed backend URL.';return}
- disconnectNseWs(); document.getElementById('nseBadge').textContent='CONNECTING...';
- try{
-  nseWs=new WebSocket(url);
-  nseWs.onopen=()=>{document.getElementById('nseBadge').textContent='REAL-TIME CONNECTED';document.getElementById('nseRtStatus').textContent='Secure WebSocket connected. Waiting for verified ticks.'};
-  nseWs.onmessage=e=>handleNseTick(e.data);
-  nseWs.onerror=()=>{document.getElementById('nseBadge').textContent='FEED ERROR';document.getElementById('nseRtStatus').textContent='WebSocket error. Check licensed backend URL and credentials.'};
-  nseWs.onclose=()=>{document.getElementById('nseBadge').textContent='FEED DISCONNECTED'};
- }catch(e){document.getElementById('nseRtStatus').textContent='WebSocket error: '+e.message}
-}
-function disconnectNseWs(){if(nseWs){try{nseWs.close()}catch(e){}nseWs=null}document.getElementById('nseBadge').textContent='FEED NOT CONNECTED'}
-function handleNseTick(raw){
- let x;try{x=JSON.parse(raw)}catch(e){return}
- let p=num(x.ltp??x.last_price??x.price);let ts=Date.parse(x.timestamp??x.time??'')||Date.now();
- if(p==null)return;
- nseTickCount++;document.getElementById('nseTicks').textContent=nseTickCount;document.getElementById('nseLast').textContent=p.toFixed(2);
- let d=new Date(ts),bucket=Math.floor((d.getTime()/300000))*300000;
- if(nseCandle.bucket!==bucket){nseCandle={bucket,o:p,h:p,l:p,c:p};}
- else{nseCandle.h=Math.max(nseCandle.h,p);nseCandle.l=Math.min(nseCandle.l,p);nseCandle.c=p}
- document.getElementById('cOpen').textContent=nseCandle.o.toFixed(2);
- document.getElementById('cHigh').textContent=nseCandle.h.toFixed(2);
- document.getElementById('cLow').textContent=nseCandle.l.toFixed(2);
- document.getElementById('cClose').textContent=nseCandle.c.toFixed(2);
- document.getElementById('nseRtStatus').textContent='Verified tick received • local 5-minute candle building • '+new Date(ts).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'});
-}
-
-
-let mcpSessionId=null,mcpTools=[],mcpPendingTools=false;
-function nseMcpConnect(){
- const u=document.getElementById('mcpUrl').value.trim();
- if(!u.startsWith('https://')){document.getElementById('mcpStatus').textContent='Use official HTTPS NSE MCP URL.';return}
- if(!window.AndroidNseMcp){document.getElementById('mcpStatus').textContent='Native NSE MCP bridge unavailable. Rebuild APK.';return}
- document.getElementById('mcpBadge').textContent='CONNECTING...';
- document.getElementById('mcpStatus').textContent='Connecting through native Android network (CORS bypass)...';
- AndroidNseMcp.connect(u);
-}
-function nseMcpTools(){
- const u=document.getElementById('mcpUrl').value.trim();
- if(!window.AndroidNseMcp){document.getElementById('mcpStatus').textContent='Native NSE MCP bridge unavailable. Rebuild APK.';return}
- document.getElementById('mcpStatus').textContent='Requesting tools/list...';
- AndroidNseMcp.listTools(u);
-}
-function nseMcpCall(){
- const i=Number(document.getElementById('mcpTool').value),t=mcpTools[i];if(!t)return;
- let args={};try{args=JSON.parse(document.getElementById('mcpArgs').value||'{}')}catch(e){document.getElementById('mcpResult').textContent='Invalid JSON arguments.';return}
- AndroidNseMcp.callTool(document.getElementById('mcpUrl').value.trim(),t.name,JSON.stringify(args));
- document.getElementById('mcpResult').textContent='Calling '+t.name+'...';
-}
-function parseMcpPayload(raw){
- let t=String(raw||'').trim();
- if(!t)return null;
- // NSE MCP native bridge may return an SSE/event wrapper such as:
- // event:messagedata:{"jsonrpc":"2.0",...}
- // Extract the JSON object before applying normal JSON/SSE parsing.
- const candidates=[t];
- const brace=t.indexOf('{');
- if(brace>0)candidates.push(t.slice(brace).trim());
- for(const x of candidates){
-   try{const o=JSON.parse(x);if(o)return o}catch(e){}
- }
- let lines=t.split(/\r?\n/);
- for(let line of lines){
-   let s=line.trim();
-   if(s.startsWith('data:'))s=s.replace(/^data:\s*/,'').trim();
-   const b=s.indexOf('{');
-   if(b>=0)s=s.slice(b).trim();
-   try{const o=JSON.parse(s);if(o&&(o.result||o.error))return o}catch(e){}
- }
- return null;
-}
-window.nseMcpNativeResult=function(ok,method,code,raw,sid){
- mcpSessionId=sid||mcpSessionId;
- let obj=parseMcpPayload(raw);
- if(!ok){
-   document.getElementById('mcpBadge').textContent='ERROR';
-   document.getElementById('mcpStatus').textContent='NSE MCP HTTP '+code+' • '+(obj?.error?.message||String(raw||'').slice(0,220));
-   return;
- }
- if(method==='server/discover'||method==='initialize'){
-   document.getElementById('mcpBadge').textContent='CONNECTED';
-   document.getElementById('mcpStatus').textContent='MCP '+(method==='server/discover'?'discovered':'initialized')+' • loading tools...';
-   if(method==='initialize') nseMcpTools();
-   return;
- }
- if(method==='tools/list'){
-   mcpTools=(obj?.result?.tools)||[];
-   const sel=document.getElementById('mcpTool');sel.innerHTML='';
-   mcpTools.forEach((t,i)=>{let o=document.createElement('option');o.value=String(i);o.textContent=t.name+(t.description?' — '+t.description.slice(0,90):'');sel.appendChild(o)});
-   document.getElementById('mcpToolCount').textContent=mcpTools.length;
-   document.getElementById('mcpStatus').textContent=mcpTools.length?'Tools loaded successfully • '+mcpTools.length+' tool(s).':'tools/list returned 0 tools • '+String(raw||'').slice(0,220);
-   return;
- }
- if(method==='tools/call'){
-   document.getElementById('mcpResult').textContent=JSON.stringify(obj||raw,null,2);
-   document.getElementById('mcpStatus').textContent='Tool response received.';
- }
-}
-
-let ocExchange='',ocUnderlying='';
-function selectOC(exchange,underlying){
- ocExchange=exchange;ocUnderlying=underlying;
- document.getElementById('ocBadge').textContent=underlying;
- document.getElementById('ocStatus').textContent='Loading available expiries...';
- document.getElementById('ocRows').innerHTML='<tr><td colspan="7">Loading...</td></tr>';
- const token=document.getElementById('token').value.trim();
- if(!token){document.getElementById('ocStatus').textContent='Groww Access Token required. Open Groww API tab and enter your token.';return}
- if(!window.AndroidGroww||!AndroidGroww.getExpiries){document.getElementById('ocStatus').textContent='This APK build does not contain the option-chain bridge. Rebuild required.';return}
- AndroidGroww.getExpiries(token,exchange,underlying,new Date().getFullYear());
-}
-function loadSelectedOC(){
- const token=document.getElementById('token').value.trim();
- const expiry=document.getElementById('ocExpiry').value;
- if(!token){document.getElementById('ocStatus').textContent='Groww Access Token required.';return}
- if(!ocUnderlying||!ocExchange){document.getElementById('ocStatus').textContent='Select an index first.';return}
- if(!expiry){document.getElementById('ocStatus').textContent='Select an expiry first.';return}
- if(!window.AndroidGroww||!AndroidGroww.getOptionChain){document.getElementById('ocStatus').textContent='Option-chain bridge unavailable. Rebuild APK.';return}
- document.getElementById('ocStatus').textContent='Loading '+ocUnderlying+' '+expiry+' option chain...';
- document.getElementById('ocRows').innerHTML='<tr><td colspan="7">Loading...</td></tr>';
- AndroidGroww.getOptionChain(token,ocExchange,ocUnderlying,expiry);
-}
-window.growwExpiriesResult=function(ok,msg,raw){
- if(!ok){document.getElementById('ocStatus').textContent=msg;return}
- try{
-  const o=JSON.parse(raw||'{}'), arr=o?.payload?.expiries||[];
-  const s=document.getElementById('ocExpiry');s.innerHTML='<option value="">Select expiry</option>';
-  arr.forEach(e=>{const opt=document.createElement('option');opt.value=e;opt.textContent=e;s.appendChild(opt)});
-  if(arr.length){
-   s.value=arr[0];
-   document.getElementById('ocStatus').textContent=ocUnderlying+' • '+arr.length+' expiry dates loaded • selected '+arr[0];
-  }else document.getElementById('ocStatus').textContent='No expiry dates returned for '+ocUnderlying;
- }catch(e){document.getElementById('ocStatus').textContent='Expiry response parse error • '+msg}
-};
-window.growwOptionChainResult=function(ok,msg,raw){
- document.getElementById('ocStatus').textContent=msg;
- if(!ok){document.getElementById('ocRows').innerHTML='<tr><td colspan="7" class="bad">'+esc(raw||msg)+'</td></tr>';return}
- try{
-  const o=JSON.parse(raw||'{}'),p=o?.payload||{},strikes=p?.strikes||{};
-  const ltp=p?.underlying_ltp;
-  document.getElementById('ocUnderlying').innerHTML='Underlying LTP<b>'+((ltp==null||Number.isNaN(Number(ltp)))?'--':Number(ltp).toFixed(2))+'</b>';
-  const keys=Object.keys(strikes).sort((a,b)=>Number(a)-Number(b));
-  const rows=keys.map(k=>{
-   const x=strikes[k]||{},ce=x.CE||{},pe=x.PE||{};
-   return '<tr><td><b>'+esc(k)+'</b></td><td>'+val(ce.ltp)+'</td><td>'+val(ce.open_interest)+'</td><td>'+val(ce.volume)+'</td><td>'+val(pe.ltp)+'</td><td>'+val(pe.open_interest)+'</td><td>'+val(pe.volume)+'</td></tr>';
-  }).join('');
-  document.getElementById('ocRows').innerHTML=rows||'<tr><td colspan="7">No strikes returned.</td></tr>';
-  document.getElementById('ocBadge').textContent=ocUnderlying+' • '+keys.length+' strikes';
- }catch(e){document.getElementById('ocRows').innerHTML='<tr><td colspan="7" class="bad">Option-chain parse error: '+esc(e.message)+'</td></tr>'}
-};
-function val(v){return v==null||v===''?'--':esc(Number.isFinite(Number(v))?Number(v).toFixed(2):v)}
-function tab(x){document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(x).classList.add('on');document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));document.getElementById(x==='dash'?'tbDash':x==='nse'?'tbNse':x==='mcp'?'tbMcp':x==='back'?'tbBack':'tbGroww').classList.add('on')}
-function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-function num(v){let n=parseFloat(String(v??'').replace(/,/g,''));return Number.isFinite(n)?n:null}
-function csvCells(line){let a=[],cur='',q=false;for(let i=0;i<line.length;i++){let c=line[i];if(c==='"'){if(q&&line[i+1]==='"'){cur+='"';i++;}else q=!q}else if(c===','&&!q){a.push(cur.trim());cur=''}else cur+=c}a.push(cur.trim());return a}
-function parseCSV(txt){
- const lines=txt.replace(/\r/g,'').split('\n').filter(x=>x.trim());if(lines.length<2)return[];
- const h=csvCells(lines[0]).map(x=>x.toLowerCase().replace(/["']/g,'').trim());
- const find=(terms)=>{for(let i=0;i<h.length;i++)if(terms.some(t=>h[i].includes(t)))return i;return -1};
- const si=find(['strike']);const ceL=find(['ce ltp','call ltp','ce premium','call premium']);const peL=find(['pe ltp','put ltp','pe premium','put premium']);const ceO=find(['ce oi','call oi']);const peO=find(['pe oi','put oi']);const ceD=find(['ce chg oi','ce change oi','call chg oi','call change oi']);const peD=find(['pe chg oi','pe change oi','put chg oi','put change oi']);
- if(si<0||ceL<0||peL<0)return[];
- return lines.slice(1).map(line=>{let a=csvCells(line);return{strike:num(a[si]),ceL:num(a[ceL]),peL:num(a[peL]),ceO:num(ceO>=0?a[ceO]:null),peO:num(peO>=0?a[peO]:null),ceD:num(ceD>=0?a[ceD]:null),peD:num(peD>=0?a[peD]:null)}}).filter(x=>x.strike!=null)
-}
-document.getElementById('csvFiles').onchange=async e=>{let fs=[...e.target.files];for(let f of fs){let rows=parseCSV(await f.text());if(rows.length)snaps.push({name:f.name,rows})}document.getElementById('fileList').innerHTML=snaps.map((s,i)=>esc((i+1)+'. '+s.name+' — '+s.rows.length+' strikes')).join('<br>')||'No valid snapshots.'};
-function mapRows(rows){let m=new Map();rows.forEach(r=>m.set(r.strike,r));return m}
-function signalType(priceDelta,oiDelta){if(priceDelta>0&&oiDelta>0)return 'Long Buildup Spike';if(priceDelta>0&&oiDelta<0)return 'Short Covering Spike';if(priceDelta<0&&oiDelta>0)return 'Writing / Short Pressure';if(priceDelta<0&&oiDelta<0)return 'Long Unwinding';return null}
-function sideSignal(a,b,r,side){let pk=side==='CE'?'ceL':'peL',ok=side==='CE'?'ceO':'peO',dk=side==='CE'?'ceD':'peD',old=a.get(r.strike);if(!old||r[pk]==null||old[pk]==null)return null;let pd=r[pk]-old[pk];let od=r[dk]!=null?r[dk]:((r[ok]??0)-(old[ok]??0));let type=signalType(pd,od);if(!type)return null;let entry=r[pk];let bullish=type==='Long Buildup Spike'||type==='Short Covering Spike';return{side,strike:r.strike,entry,bullish,sl:bullish?Math.max(0,entry-10):entry+10,target:bullish?entry+20:Math.max(0,entry-20),type}}
-function runBacktest(){let T=0,W=0,L=0,O=0,net=0,out=[];for(let i=1;i<snaps.length-1;i++){let a=mapRows(snaps[i-1].rows),c=mapRows(snaps[i+1].rows);for(let r of snaps[i].rows){for(let side of ['CE','PE']){let sig=sideSignal(a,snaps[i].rows.length?r:r, r, side);if(!sig)continue;let nxt=c.get(sig.strike),price=nxt?(side==='CE'?nxt.ceL:nxt.peL):null;if(price==null){O++;out.push(sig.side+' '+sig.strike+' '+sig.type+' OPEN');continue}T++;if((sig.bullish&&price>=sig.target)||(!sig.bullish&&price<=sig.target)){W++;net+=20;out.push((sig.bullish?'BUY ':'SELL ')+sig.side+' '+sig.strike+' '+sig.type+' WIN +20')}else if((sig.bullish&&price<=sig.sl)||(!sig.bullish&&price>=sig.sl)){L++;net-=10;out.push((sig.bullish?'BUY ':'SELL ')+sig.side+' '+sig.strike+' '+sig.type+' LOSS -10')}else{O++;out.push((sig.bullish?'BUY ':'SELL ')+sig.side+' '+sig.strike+' '+sig.type+' OPEN '+price.toFixed(2))}}}}document.getElementById('trades').textContent=T;document.getElementById('wins').textContent=W;document.getElementById('losses').textContent=L;document.getElementById('open').textContent=O;document.getElementById('rate').textContent=T?(W/T*100).toFixed(1)+'%':'--';document.getElementById('net').textContent=net.toFixed(1);document.getElementById('btRows').innerHTML=out.length?out.slice(0,100).map(esc).join('<br>'):'No qualifying historical signals.'}
-function clearBT(){snaps=[];document.getElementById('fileList').textContent='No snapshots loaded.';runBacktest()}
-function setStatus(ok,msg){document.getElementById('growwStatus').innerHTML='<span class="'+(ok?'ok':'bad')+'">'+esc(msg)+'</span>';document.getElementById('dashState').textContent=msg}
-function checkNseStatus(){if(window.AndroidNSE&&AndroidNSE.checkServer)AndroidNSE.checkServer();else{document.getElementById('nseStatus').innerHTML='<span class="warn">NSE direct feed bridge is not configured in this APK build.</span>';document.getElementById('nseBadge').textContent='FEED NOT CONNECTED'}}
-function testGroww(){let t=document.getElementById('token').value.trim();if(!t){setStatus(false,'Token required.');return}if(window.AndroidGroww)AndroidGroww.testUserProfile(t);else setStatus(false,'Native Groww bridge unavailable. APK build required.')}
-function testQuote(){let t=document.getElementById('token').value.trim();if(!t){setStatus(false,'Token required.');return}if(window.AndroidGroww)AndroidGroww.testQuote(t);else setStatus(false,'Native Groww bridge unavailable. APK build required.')}
-let liveTimer=null;
-function startLive(){let t=document.getElementById('token').value.trim();if(!t){setStatus(false,'Token required.');return}if(!window.AndroidGroww){setStatus(false,'Native Groww bridge unavailable. APK build required.');return}if(liveTimer)clearInterval(liveTimer);AndroidGroww.testQuote(t);liveTimer=setInterval(()=>{let x=document.getElementById('token').value.trim();if(x)AndroidGroww.testQuote(x)},5000);document.getElementById('liveBtn').textContent='LIVE REFRESH ON • 5s'}
-function stopLive(){if(liveTimer)clearInterval(liveTimer);liveTimer=null;document.getElementById('liveBtn').textContent='START LIVE • 5s'}
-function testOptionChain(){let t=document.getElementById('token').value.trim(),e=document.getElementById('expiry').value.trim();if(!t){setStatus(false,'Token required.');return}if(window.AndroidGroww)AndroidGroww.testOptionChain(t,e);else setStatus(false,'Native Groww bridge unavailable. APK build required.')}
-window.nseResult=function(ok,msg){document.getElementById('nseStatus').innerHTML='<span class="'+(ok?'ok':'bad')+'">'+esc(msg)+'</span>';document.getElementById('nseBadge').textContent=ok?'NSE SERVER REACHABLE':'NSE SERVER ERROR'};
-window.growwResult=function(ok,msg){setStatus(ok,msg);if(ok&&msg.includes('LIVE QUOTE')){document.getElementById('signal').textContent='LIVE DATA CONNECTED';let m=msg.match(/LTP=([0-9.]+)/);let oi=msg.match(/OI=([0-9.]+)/);let od=msg.match(/OIΔ=([0-9.-]+)/);if(m)document.getElementById('ltp').textContent=m[1];if(od)document.getElementById('oi').textContent=od[1];document.getElementById('dashState').textContent='Groww NIFTY live quote received • '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'})}}
-setInterval(()=>document.getElementById('market').textContent='IST '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'}),1000);
-</script></body></html>
+let toolsList=[];
+function tab(id){document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));document.getElementById({dash:'tDash',angel:'tAngel',nse:'tNse',mcp:'tMcp',data:'tData',set:'tSet'}[id]).classList.add('on')}
+function angelLogin(){if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing. Rebuild APK.');return}AndroidAngel.login(v('client'),v('pin'),v('totp'),v('apiKey'))}
+function angelProfile(){if(window.AndroidAngel)AndroidAngel.profile()}
+function angelFeed(){if(window.AndroidAngel)AndroidAngel.feedInfo()}
+function angelLogout(){if(window.AndroidAngel)AndroidAngel.logout()}
+function angelMsg(ok,msg){document.getElementById('angelStatus').textContent=msg;document.getElementById('angelBadge').textContent=ok?'CONNECTED':'ERROR';document.getElementById('angelBadge').className='badge '+(ok?'ok':'bad');document.getElementById('connBadge').textContent=ok?'ANGEL ONLINE':'OFFLINE';document.getElementById('connBadge').className='badge '+(ok?'ok':'warn');document.getElementById('aMini').textContent=ok?'Connected':'Not connected';document.getElementById('aMini').className=ok?'green':'red';if(ok){document.getElementById('source').textContent='Angel One';document.getElementById('session').textContent='Active';document.getElementById('mainState').textContent='API CONNECTED';}}
+window.angelResult=function(ok,msg){angelMsg(ok,msg);let m=msg.toLowerCase();if(m.includes('jwt'))document.getElementById('jwtState').textContent='READY';if(m.includes('feed token'))document.getElementById('feedState').textContent='READY';if(m.includes('profile'))document.getElementById('profileState').textContent=ok?'VERIFIED':'ERROR';if(m.includes('session cleared')){document.getElementById('authState').textContent='LOGGED OUT';document.getElementById('jwtState').textContent='--';document.getElementById('feedState').textContent='--';}}
+function checkNse(){if(window.AndroidNSE)AndroidNSE.checkServer();else nseMsg(false,'NSE bridge unavailable.')}
+window.nseResult=function(ok,msg){nseMsg(ok,msg)}
+function nseMsg(ok,msg){document.getElementById('nseStatus').textContent=msg;document.getElementById('nseBadge').textContent=ok?'REACHABLE':'ERROR';document.getElementById('nseBadge').className='badge '+(ok?'ok':'bad')}
+function mcpConnect(){let u=v('mcpUrl');if(window.AndroidNseMcp){document.getElementById('mcpStatus').textContent='Connecting...';AndroidNseMcp.connect(u)}}
+function mcpTools(){let u=v('mcpUrl');if(window.AndroidNseMcp){document.getElementById('mcpStatus').textContent='Loading tools...';AndroidNseMcp.listTools(u)}}
+function mcpCall(){let i=Number(document.getElementById('tool').value),t=toolsList[i];if(!t)return;let a={};try{a=JSON.parse(v('args')||'{}')}catch(e){document.getElementById('result').textContent='Invalid JSON';return}AndroidNseMcp.callTool(v('mcpUrl'),t.name,JSON.stringify(a))}
+function parseMcp(raw){let t=String(raw||'').trim(),arr=[t];let b=t.indexOf('{');if(b>0)arr.push(t.slice(b));for(let x of arr){try{return JSON.parse(x)}catch(e){}}for(let line of t.split(/\r?\n/)){let s=line.trim().replace(/^data:\s*/,'');let q=s.indexOf('{');if(q>=0)s=s.slice(q);try{let o=JSON.parse(s);if(o)return o}catch(e){}}return null}
+window.nseMcpNativeResult=function(ok,method,code,raw,sid){let o=parseMcp(raw);if(!ok){document.getElementById('mcpBadge').textContent='ERROR';document.getElementById('mcpStatus').textContent='HTTP '+code+' • '+String(raw).slice(0,180);return}document.getElementById('mcpBadge').textContent='CONNECTED';document.getElementById('mcpBadge').className='badge ok';if(method==='tools/list'){toolsList=o?.result?.tools||[];let s=document.getElementById('tool');s.innerHTML='';toolsList.forEach((t,i)=>{let z=document.createElement('option');z.value=i;z.textContent=t.name;s.appendChild(z)});document.getElementById('toolCount').textContent=toolsList.length;document.getElementById('mcpStatus').textContent=toolsList.length+' tools loaded';document.getElementById('mMini').textContent='Connected'}else if(method==='tools/call'){document.getElementById('result').textContent=JSON.stringify(o||raw,null,2)}else document.getElementById('mcpStatus').textContent='MCP initialized • tools loading...'}
+document.getElementById('files').onchange=e=>{let fs=[...e.target.files];document.getElementById('fileStatus').textContent=fs.length+' file(s) selected • '+fs.map(x=>x.name).join(', ')}
+function v(id){return document.getElementById(id).value.trim()}
+setInterval(()=>document.getElementById('market').textContent='IST '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'}),1000)
+</script>
+</body></html>
