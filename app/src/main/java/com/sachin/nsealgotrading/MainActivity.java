@@ -197,7 +197,7 @@ public class MainActivity extends Activity {
 
                     if (ok) {
                         JSONObject data = root.optJSONObject("data");
-                        jwtToken = data == null ? "" : data.optString("jwtToken", "");
+                        jwtToken = normalizeJwt(data == null ? "" : data.optString("jwtToken", ""));
                         refreshToken = data == null ? "" : data.optString("refreshToken", "");
                         feedToken = data == null ? "" : data.optString("feedToken", "");
                         clientCode = client.trim();
@@ -230,7 +230,7 @@ public class MainActivity extends Activity {
                     c.setConnectTimeout(10000);
                     c.setReadTimeout(15000);
                     c.setRequestProperty("Accept", "application/json");
-                    c.setRequestProperty("Authorization", "Bearer "+token);
+                    c.setRequestProperty("Authorization", token.startsWith("Bearer ") ? token : "Bearer "+token);
                     c.setRequestProperty("X-API-VERSION", "1.0");
                     c.setRequestProperty("X-PrivateKey", apiKey);
                     c.setRequestProperty("X-UserType", "USER");
@@ -322,7 +322,7 @@ public class MainActivity extends Activity {
                 postAngel(false, "Callback session incomplete • Client Code, API Key, auth token and feed token are required");
                 return;
             }
-            clientCode = client.trim(); apiKey = key.trim(); jwtToken = auth.trim(); feedToken = feed.trim();
+            clientCode = client.trim(); apiKey = key.trim(); jwtToken = normalizeJwt(auth); feedToken = feed.trim();
             refreshToken = "";
             postAngel(true, "Angel One callback session imported • JWT READY • Feed Token READY");
         }
@@ -437,7 +437,7 @@ public class MainActivity extends Activity {
             wsClient = new OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build();
             Request req = new Request.Builder()
                 .url("wss://smartapisocket.angelone.in/smart-stream")
-                .addHeader("Authorization","Bearer "+jwtToken)
+                .addHeader("Authorization",jwtToken)
                 .addHeader("x-api-key",apiKey)
                 .addHeader("x-client-code",clientCode)
                 .addHeader("x-feed-token",feedToken).build();
@@ -573,7 +573,7 @@ public class MainActivity extends Activity {
             c.setRequestProperty("User-Agent","Mozilla/5.0 (Linux; Android) NSEAlgoSignal/1.1");
         }
 
-        private String state(String v) {
+        private String normalizeJwt(String v){ if(v==null)return ""; v=v.trim(); return v.regionMatches(true,0,"Bearer ",0,7)?v:"Bearer "+v; }\n\n        private String state(String v) {
             return v == null || v.isEmpty() ? "NO" : "READY";
         }
 
