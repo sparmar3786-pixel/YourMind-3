@@ -132,9 +132,9 @@ public class MainActivity extends Activity {
 
     public class AngelOneBridge {
         private static final String LOGIN_URL =
-            "https://apiconnect.angelone.in/rest/auth/angelbroking/v1/loginByPassword";
+            "https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword";
         private static final String PROFILE_URL =
-            "https://apiconnect.angelone.in/rest/secure/angelbroking/v1/getProfile";
+            "https://apiconnect.angelone.in/rest/secure/angelbroking/user/v1/getProfile";
 
         private volatile String jwtToken = "";
         private volatile String refreshToken = "";
