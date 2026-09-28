@@ -138,13 +138,23 @@ function nseMcpCall(){
 }
 function parseMcpPayload(raw){
  let t=String(raw||'').trim();
- try{return JSON.parse(t)}catch(e){}
+ if(!t)return null;
+ // NSE MCP native bridge may return an SSE/event wrapper such as:
+ // event:messagedata:{"jsonrpc":"2.0",...}
+ // Extract the JSON object before applying normal JSON/SSE parsing.
+ const candidates=[t];
+ const brace=t.indexOf('{');
+ if(brace>0)candidates.push(t.slice(brace).trim());
+ for(const x of candidates){
+   try{const o=JSON.parse(x);if(o)return o}catch(e){}
+ }
  let lines=t.split(/\r?\n/);
  for(let line of lines){
-   if(line.trim().startsWith('data:')){
-     let x=line.replace(/^data:\s*/,'').trim();
-     try{let o=JSON.parse(x);if(o&& (o.result||o.error))return o}catch(e){}
-   }
+   let s=line.trim();
+   if(s.startsWith('data:'))s=s.replace(/^data:\s*/,'').trim();
+   const b=s.indexOf('{');
+   if(b>=0)s=s.slice(b).trim();
+   try{const o=JSON.parse(s);if(o&&(o.result||o.error))return o}catch(e){}
  }
  return null;
 }
