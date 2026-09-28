@@ -397,39 +397,43 @@ public class MainActivity extends Activity {
                 }
                 if(tokens.length()==0){postMarket(false,"SCRIPT","No tokens available for "+selectedIndex);return;}
                 connectMarketSocket(tokens, segment.equals("BFO") ? 4 : 2);
-                loadInitialQuotes(tokens, segment);\n                postMarket(true,"SCRIPT","Loaded "+tokens.length()+" contracts • "+selectedIndex+" • expiry "+expiry);
+                loadInitialQuotes(tokens, segment);
+                postMarket(true,"SCRIPT","Loaded "+tokens.length()+" contracts • "+selectedIndex+" • expiry "+expiry);
             } catch(Exception e) {
                 postMarket(false,"SCRIPT","Scrip master error • "+safe(e.getMessage()));
             }
         }
 
         private void loadInitialQuotes(JSONArray tokens, String segment) {
-            net.execute(() -> {
-                try {
-                    JSONArray batch=new JSONArray();
-                    int total=Math.min(tokens.length(),50);
-                    for(int i=0;i<total;i++) batch.put(tokens.optString(i));
-                    JSONObject ex=new JSONObject(); ex.put(segment,batch);
-                    JSONObject body=new JSONObject(); body.put("mode","FULL"); body.put("exchangeTokens",ex);
-                    HttpURLConnection c=(HttpURLConnection)new URL("https://apiconnect.angelone.in/rest/secure/angelbroking/market/v1/quote/").openConnection();
-                    c.setRequestMethod("POST"); c.setConnectTimeout(15000); c.setReadTimeout(20000); c.setDoOutput(true);
-                    setAngelHeaders(c,apiKey,lastPublicIp,lastLocalIp,lastMac);
-                    OutputStream os=c.getOutputStream(); os.write(body.toString().getBytes("UTF-8")); os.flush(); os.close();
-                    int code=c.getResponseCode(); String raw=read(code>=200&&code<400?c.getInputStream():c.getErrorStream());
-                    JSONObject root=parseJson(raw);
-                    if(code>=200&&code<300&&root!=null&&root.optBoolean("status",false)){
+            final int batchSize=50;
+            for(int start=0; start<tokens.length(); start+=batchSize){
+                final int from=start, to=Math.min(start+batchSize,tokens.length());
+                net.execute(() -> {
+                    try {
+                        JSONArray batch=new JSONArray();
+                        for(int i=from;i<to;i++) batch.put(tokens.optString(i));
+                        JSONObject ex=new JSONObject(); ex.put(segment,batch);
+                        JSONObject body=new JSONObject(); body.put("mode","FULL"); body.put("exchangeTokens",ex);
+                        HttpURLConnection c=(HttpURLConnection)new URL("https://apiconnect.angelone.in/rest/secure/angelbroking/market/v1/quote/").openConnection();
+                        c.setRequestMethod("POST"); c.setConnectTimeout(15000); c.setReadTimeout(20000); c.setDoOutput(true);
+                        setAngelHeaders(c,apiKey,lastPublicIp,lastLocalIp,lastMac);
+                        OutputStream os=c.getOutputStream(); os.write(body.toString().getBytes("UTF-8")); os.flush(); os.close();
+                        int code=c.getResponseCode(); String raw=read(code>=400?c.getErrorStream():c.getInputStream());
+                        JSONObject root=parseJson(raw);
+                        if(code<200||code>=300){postMarket(false,"QUOTE","HTTP "+code+" • "+safe(raw));return;}
+                        if(root==null||!root.optBoolean("status",false)){postMarket(false,"QUOTE","API rejected • "+safe(raw));return;}
                         JSONObject data=root.optJSONObject("data"); JSONArray fetched=data==null?null:data.optJSONArray("fetched"); int n=0;
                         if(fetched!=null) for(int i=0;i<fetched.length();i++){
                             JSONObject q=fetched.optJSONObject(i); if(q==null) continue;
-                            LiveRow row=liveRows.get(q.optString("symbolToken","")); if(row==null) continue;
-                            row.ltp=q.optDouble("ltp",row.ltp); row.volume=q.optLong("tradeVolume",row.volume); row.oi=q.optLong("opnInterest",row.oi); row.priceDelta=q.optDouble("netChange",row.priceDelta); n++;
-                            String js="window.angelMarketTick&&window.angelMarketTick("+JSONObject.quote(row.toJson())+");";
-                            runOnUiThread(()->{if(w!=null)w.evaluateJavascript(js,null);});
+                            String token=q.optString("symbolToken","");
+                            LiveRow row=liveRows.get(token);
+                            if(row!=null){ row.ltp=q.optDouble("ltp",row.ltp); row.volume=q.optLong("tradeVolume",row.volume); row.oi=q.optLong("opnInterest",row.oi); row.priceDelta=q.optDouble("netChange",row.priceDelta); postMarket(true,"TICK",row.toJson().toString()); n++; }
                         }
-                        postMarket(true,"REST","Initial FULL quote received • "+n+" contracts");
-                    } else postMarket(false,"REST","Quote API failed • HTTP "+code+" • "+extractError(raw));
-                } catch(Exception e){postMarket(false,"REST","Quote API error • "+safe(e.getMessage()));}
-            });
+                        postMarket(true,"QUOTE","Received "+n+" contracts • batch "+from+"-"+(to-1));
+                    }catch(Exception e){postMarket(false,"QUOTE","Exception • "+safe(e.getMessage()));}
+                });
+                try{Thread.sleep(1050);}catch(InterruptedException ignored){}
+            }
         }
 
         private void connectMarketSocket(JSONArray tokens, int exchangeType) {
@@ -486,7 +490,8 @@ public class MainActivity extends Activity {
         }
 
         private String readToken(byte[] b){int e=2;while(e<27&&b[e]!=0)e++;try{return new String(b,2,e-2,"UTF-8");}catch(Exception ex){return "";}}
-        private int leInt(byte[] b,int p){int v=0;for(int i=0;i<4&&p+i<b.length;i++)v|=(b[p+i]&255)<<(8*i);return v;}\n        private long leLong(byte[] b,int p){long v=0;for(int i=0;i<8&&p+i<b.length;i++)v|=((long)b[p+i]&255L)<<(8*i);return v;}
+        private int leInt(byte[] b,int p){int v=0;for(int i=0;i<4&&p+i<b.length;i++)v|=(b[p+i]&255)<<(8*i);return v;}
+        private long leLong(byte[] b,int p){long v=0;for(int i=0;i<8&&p+i<b.length;i++)v|=((long)b[p+i]&255L)<<(8*i);return v;}
         private double safeNumber(String s){try{return Double.parseDouble(s);}catch(Exception e){return 0;}}
         private String httpGet(String u)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setConnectTimeout(20000);c.setReadTimeout(30000);c.setRequestProperty("Accept","application/json");try{return read(c.getInputStream());}finally{c.disconnect();}}
 
@@ -573,7 +578,9 @@ public class MainActivity extends Activity {
             c.setRequestProperty("User-Agent","Mozilla/5.0 (Linux; Android) NSEAlgoSignal/1.1");
         }
 
-        private String normalizeJwt(String v){ if(v==null)return ""; v=v.trim(); return v.regionMatches(true,0,"Bearer ",0,7)?v:"Bearer "+v; }\n\n        private String state(String v) {
+        private String normalizeJwt(String v){ if(v==null)return ""; v=v.trim(); return v.regionMatches(true,0,"Bearer ",0,7)?v:"Bearer "+v; }
+
+        private String state(String v) {
             return v == null || v.isEmpty() ? "NO" : "READY";
         }
 
@@ -794,7 +801,8 @@ public class MainActivity extends Activity {
     }
 
     private String safe(String s) {
-        return s == null ? "" : s.replace("\n"," ").replace("\r"," ");
+        return s == null ? "" : s.replace("
+"," ").replace("\r"," ");
     }
 
     private String read(InputStream is) throws IOException {
