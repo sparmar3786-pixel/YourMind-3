@@ -264,7 +264,11 @@ public class MainActivity extends Activity {
 
         private void loadScriptMasterAndSubscribe() {
             try {
-                String raw = httpGet("https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json");
+                String raw = scripMasterCache;
+                if (raw == null || raw.isEmpty()) {
+                    raw = httpGet("https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json");
+                    scripMasterCache = raw;
+                }
                 JSONArray all = new JSONArray(raw);
                 String segment = ("SENSEX".equals(selectedIndex) || "BANKEX".equals(selectedIndex)) ? "BFO" : "NFO";
                 Date today = new Date();
@@ -300,8 +304,7 @@ public class MainActivity extends Activity {
                 }
                 if(tokens.length()==0){postMarket(false,"SCRIPT","No tokens available for "+selectedIndex);return;}
                 connectMarketSocket(tokens, segment.equals("BFO") ? 4 : 2);
-                loadInitialQuotes(tokens, segment);
-                postMarket(true,"SCRIPT","Loaded "+tokens.length()+" contracts • "+selectedIndex+" • expiry "+expiry);
+                postMarket(true,"SCRIPT","Loaded "+tokens.length()+" contracts • "+selectedIndex+" • expiry "+expiry+" • WebSocket streaming");
             } catch(Exception e) {
                 postMarket(false,"SCRIPT","Scrip master error • "+safe(e.getMessage()));
             }
