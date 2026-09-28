@@ -12,12 +12,14 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import androidx.webkit.WebViewAssetLoader;
 import org.json.JSONObject;
+import org.json.JSONArray;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.NetworkInterface;
 import java.net.InetAddress;
 import java.net.Inet4Address;
+import java.text.SimpleDateFormat;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ConcurrentHashMap;
@@ -416,6 +418,7 @@ public class MainActivity extends Activity {
             c.setRequestProperty("X-ClientPublicIP",empty(publicIp)?"0.0.0.0":publicIp.trim());
             c.setRequestProperty("X-MACAddress",empty(mac)?"00:00:00:00:00:00":mac.trim());
             c.setRequestProperty("X-PrivateKey",key);
+            c.setRequestProperty("User-Agent","Mozilla/5.0 (Linux; Android) NSEAlgoSignal/1.1");
         }
         private String detectLocalIp(){
             try{
@@ -465,18 +468,6 @@ public class MainActivity extends Activity {
 
         private void setAngelHeaders(HttpURLConnection c, String key) {
             setAngelHeaders(c,key,lastPublicIp,lastLocalIp,lastMac);
-        }
-
-        private void setAngelHeaders(HttpURLConnection c, String key, String publicIp, String localIp, String mac) {
-            c.setRequestProperty("Content-Type","application/json");
-            c.setRequestProperty("Accept","application/json");
-            c.setRequestProperty("X-UserType","USER");
-            c.setRequestProperty("X-SourceID","WEB");
-            c.setRequestProperty("X-ClientLocalIP",localIp);
-            c.setRequestProperty("X-ClientPublicIP",publicIp);
-            c.setRequestProperty("X-MACAddress",mac);
-            c.setRequestProperty("X-PrivateKey",key);
-            c.setRequestProperty("User-Agent","Mozilla/5.0 (Linux; Android) NSEAlgoSignal/1.1");
         }
 
         private String normalizeJwt(String v){ if(v==null)return ""; v=v.trim(); return v.regionMatches(true,0,"Bearer ",0,7)?v:"Bearer "+v; }
