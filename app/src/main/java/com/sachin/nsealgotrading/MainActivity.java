@@ -142,6 +142,9 @@ public class MainActivity extends Activity {
 
         private volatile String jwtToken = "";
         private volatile String refreshToken = "";
+        private volatile String lastPublicIp = "";
+        private volatile String lastLocalIp = "";
+        private volatile String lastMac = "";
         private volatile String feedToken = "";
         private volatile String clientCode = "";
         private volatile String apiKey = "";
@@ -282,7 +285,7 @@ public class MainActivity extends Activity {
                         jwtToken = data == null ? "" : data.optString("jwtToken", "");
                         refreshToken = data == null ? "" : data.optString("refreshToken", "");
                         feedToken = data == null ? "" : data.optString("feedToken", "");
-                        clientCode = client.trim(); apiKey = key.trim();
+                        clientCode = client.trim(); apiKey = key.trim(); lastPublicIp = publicIp == null ? "" : publicIp.trim(); lastLocalIp = localIp == null ? "" : localIp.trim(); lastMac = mac == null ? "" : mac.trim();
                         postAngel(true, "Login successful • JWT READY • Feed Token READY");
                     } else {
                         clearSession();
@@ -428,6 +431,9 @@ public class MainActivity extends Activity {
             feedToken = "";
             clientCode = "";
             apiKey = "";
+            lastPublicIp = "";
+            lastLocalIp = "";
+            lastMac = "";
         }
 
         private void setAngelHeaders(HttpURLConnection c, String key, String publicIp, String localIp, String mac) {
@@ -461,9 +467,9 @@ public class MainActivity extends Activity {
             c.setRequestProperty("Accept", "application/json");
             c.setRequestProperty("X-UserType", "USER");
             c.setRequestProperty("X-SourceID", "WEB");
-            c.setRequestProperty("X-ClientLocalIP", "127.0.0.1");
-            c.setRequestProperty("X-ClientPublicIP", "127.0.0.1");
-            c.setRequestProperty("X-MACAddress", "00:00:00:00:00:00");
+            c.setRequestProperty("X-ClientLocalIP", lastLocalIp.isEmpty() ? detectLocalIp() : lastLocalIp);
+            c.setRequestProperty("X-ClientPublicIP", lastPublicIp.isEmpty() ? "0.0.0.0" : lastPublicIp);
+            c.setRequestProperty("X-MACAddress", lastMac.isEmpty() ? "00:00:00:00:00:00" : lastMac);
             c.setRequestProperty("X-PrivateKey", key);
         }
 
