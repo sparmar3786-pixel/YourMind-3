@@ -20,6 +20,9 @@ public class MainActivity extends Activity {
     private WebView w;
     private ValueCallback<Uri[]> fileCallback;
     private final ExecutorService net = Executors.newSingleThreadExecutor();
+    private String pendingAngelAuthToken = "";
+    private String pendingAngelFeedToken = "";
+    private String pendingAngelState = "";
     private static final int FILE_PICKER = 4101;
 
     @Override public void onCreate(Bundle b) {
@@ -38,6 +41,11 @@ public class MainActivity extends Activity {
         w.setWebViewClient(new WebViewClient() {
             @Override public WebResourceResponse shouldInterceptRequest(WebView v, String u) {
                 return loader.shouldInterceptRequest(Uri.parse(u));
+            }
+
+            @Override public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                deliverPendingAngelCallback();
             }
         });
 
@@ -73,20 +81,33 @@ public class MainActivity extends Activity {
     }
 
     private void handleAngelCallback(Intent intent) {
-        if (intent == null || intent.getData() == null || w == null) return;
+        if (intent == null || intent.getData() == null) return;
         Uri uri = intent.getData();
         if (!"nsealgosignal".equalsIgnoreCase(uri.getScheme()) ||
             !"angel-callback".equalsIgnoreCase(uri.getHost())) return;
 
-        String authToken = uri.getQueryParameter("auth_token");
-        String feedToken = uri.getQueryParameter("feed_token");
-        String state = uri.getQueryParameter("state");
+        pendingAngelAuthToken = valueOrEmpty(uri.getQueryParameter("auth_token"));
+        pendingAngelFeedToken = valueOrEmpty(uri.getQueryParameter("feed_token"));
+        pendingAngelState = valueOrEmpty(uri.getQueryParameter("state"));
+        deliverPendingAngelCallback();
+    }
 
+    private void deliverPendingAngelCallback() {
+        if (w == null || pendingAngelAuthToken.isEmpty()) return;
+        final String auth = pendingAngelAuthToken;
+        final String feed = pendingAngelFeedToken;
+        final String state = pendingAngelState;
         String js = "window.handleAngelCallback && window.handleAngelCallback(" +
-            JSONObject.quote(authToken == null ? "" : authToken) + "," +
-            JSONObject.quote(feedToken == null ? "" : feedToken) + "," +
-            JSONObject.quote(state == null ? "" : state) + ");";
+            JSONObject.quote(auth) + "," + JSONObject.quote(feed) + "," +
+            JSONObject.quote(state) + ");";
         w.post(() -> w.evaluateJavascript(js, null));
+        pendingAngelAuthToken = "";
+        pendingAngelFeedToken = "";
+        pendingAngelState = "";
+    }
+
+    private String valueOrEmpty(String v) {
+        return v == null ? "" : v;
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
