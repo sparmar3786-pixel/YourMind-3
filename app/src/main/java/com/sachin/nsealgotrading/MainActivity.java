@@ -94,27 +94,66 @@ public class MainActivity extends Activity {
 
     public class NseMcpBridge {
         private volatile String sessionId = null;
-        private static final String MCP_VERSION = "2025-11-25";
+        private volatile boolean modern = false;
+        private static final String MODERN_VERSION = "2026-07-28";
+        private static final String LEGACY_VERSION = "2025-11-25";
 
         @JavascriptInterface public void connect(final String url) {
+            sessionId = null;
+            modern = false;
+            probeModern(url);
+        }
+
+        private void probeModern(final String url) {
+            JSONObject meta = new JSONObject();
+            try {
+                meta.put("io.modelcontextprotocol/protocolVersion", MODERN_VERSION);
+                JSONObject ci = new JSONObject();
+                ci.put("name", "NSE-Algo-Signal");
+                ci.put("version", "1.0");
+                meta.put("io.modelcontextprotocol/clientInfo", ci);
+                meta.put("io.modelcontextprotocol/clientCapabilities", new JSONObject());
+
+                JSONObject params = new JSONObject();
+                params.put("_meta", meta);
+                mcpRequest(url, "server/discover", params, false, true, true);
+            } catch (Exception ex) {
+                fallbackLegacy(url, "Modern probe build failed: " + ex.getMessage());
+            }
+        }
+
+        private void fallbackLegacy(final String url, final String reason) {
+            modern = false;
+            sessionId = null;
             try {
                 JSONObject p = new JSONObject();
-                p.put("protocolVersion", MCP_VERSION);
-                JSONObject caps = new JSONObject();
-                caps.put("tools", new JSONObject());
-                p.put("capabilities", caps);
+                p.put("protocolVersion", LEGACY_VERSION);
+                p.put("capabilities", new JSONObject());
                 JSONObject client = new JSONObject();
                 client.put("name", "NSE-Algo-Signal");
                 client.put("version", "1.0");
                 p.put("clientInfo", client);
-                mcpRequest(url, "initialize", p, true);
-            } catch(Exception ex) {
-                postMcp(false, "initialize", 0, ex.getMessage(), sessionId);
+                mcpRequest(url, "initialize", p, true, false, false);
+            } catch (Exception ex) {
+                postMcp(false, "initialize", 0, reason + " • " + ex.getMessage(), sessionId);
             }
         }
 
         @JavascriptInterface public void listTools(final String url) {
-            mcpRequest(url, "tools/list", new JSONObject(), false);
+            JSONObject p = new JSONObject();
+            if (modern) {
+                try {
+                    JSONObject meta = new JSONObject();
+                    meta.put("io.modelcontextprotocol/protocolVersion", MODERN_VERSION);
+                    JSONObject ci = new JSONObject();
+                    ci.put("name", "NSE-Algo-Signal");
+                    ci.put("version", "1.0");
+                    meta.put("io.modelcontextprotocol/clientInfo", ci);
+                    meta.put("io.modelcontextprotocol/clientCapabilities", new JSONObject());
+                    p.put("_meta", meta);
+                } catch (Exception ignored) {}
+            }
+            mcpRequest(url, "tools/list", p, false, modern, false);
         }
 
         @JavascriptInterface public void callTool(final String url, final String name, final String argsJson) {
@@ -123,13 +162,24 @@ public class MainActivity extends Activity {
                 p.put("name", name);
                 JSONObject args = new JSONObject(argsJson == null || argsJson.trim().isEmpty() ? "{}" : argsJson);
                 p.put("arguments", args);
-                mcpRequest(url, "tools/call", p, false);
+                if (modern) {
+                    JSONObject meta = new JSONObject();
+                    meta.put("io.modelcontextprotocol/protocolVersion", MODERN_VERSION);
+                    JSONObject ci = new JSONObject();
+                    ci.put("name", "NSE-Algo-Signal");
+                    ci.put("version", "1.0");
+                    meta.put("io.modelcontextprotocol/clientInfo", ci);
+                    meta.put("io.modelcontextprotocol/clientCapabilities", new JSONObject());
+                    p.put("_meta", meta);
+                }
+                mcpRequest(url, "tools/call", p, false, modern, false);
             } catch(Exception ex) {
                 postMcp(false, "tools/call", 0, "Invalid tool arguments: " + ex.getMessage(), sessionId);
             }
         }
 
-        private void mcpRequest(final String url, final String method, final JSONObject params, final boolean init) {
+        private void mcpRequest(final String url, final String method, final JSONObject params,
+                                final boolean init, final boolean useModern, final boolean autoProbe) {
             net.execute(() -> {
                 HttpURLConnection c=null;
                 try {
@@ -140,13 +190,14 @@ public class MainActivity extends Activity {
                     c.setDoOutput(true);
                     c.setRequestProperty("Content-Type","application/json");
                     c.setRequestProperty("Accept","application/json, text/event-stream");
-                    c.setRequestProperty("MCP-Protocol-Version",MCP_VERSION);
+                    c.setRequestProperty("MCP-Protocol-Version",useModern ? MODERN_VERSION : LEGACY_VERSION);
+                    c.setRequestProperty("Mcp-Method",method);
                     c.setRequestProperty("User-Agent","NSE-Algo-Signal-Android/1.0");
-                    if(sessionId!=null && !init) c.setRequestProperty("Mcp-Session-Id",sessionId);
+                    if(!useModern && sessionId!=null && !init) c.setRequestProperty("Mcp-Session-Id",sessionId);
 
                     JSONObject req=new JSONObject();
                     req.put("jsonrpc","2.0");
-                    req.put("id",System.currentTimeMillis());
+                    req.put("id",String.valueOf(System.currentTimeMillis()));
                     req.put("method",method);
                     req.put("params",params);
 
@@ -156,17 +207,33 @@ public class MainActivity extends Activity {
 
                     int code=c.getResponseCode();
                     String sid=c.getHeaderField("Mcp-Session-Id");
-                    if(sid!=null && !sid.isEmpty()) sessionId=sid;
+                    if(sid!=null && !sid.isEmpty() && !useModern) sessionId=sid;
 
                     InputStream is=code>=200&&code<400?c.getInputStream():c.getErrorStream();
                     String response=read(is);
 
-                    if(init && code>=200 && code<300) {
-                        sendInitialized(url);
+                    if(!useModern && init && code>=200 && code<300) sendInitialized(url);
+                    if(useModern && method.equals("server/discover") && code>=200 && code<300) {
+                        modern = response.contains(MODERN_VERSION);
+                        if (modern) {
+                            postMcp(true, "server/discover", code, response, "");
+                            listTools(url);
+                            return;
+                        }
                     }
-                    postMcp(code>=200&&code<300, method, code, response, sessionId);
+                    if(!useModern && method.equals("initialize") && code>=200 && code<300) {
+                        modern = false;
+                        postMcp(true, "initialize", code, response, sessionId);
+                        listTools(url);
+                        return;
+                    }
+                    postMcp(code>=200&&code<300, method, code, response, useModern ? "" : sessionId);
                 } catch(Exception ex) {
-                    postMcp(false, method, 0, ex.getClass().getSimpleName()+": "+ex.getMessage(), sessionId);
+                    if(autoProbe || method.equals("server/discover")) {
+                        fallbackLegacy(url, "Modern MCP probe failed • "+ex.getClass().getSimpleName()+": "+ex.getMessage());
+                    } else {
+                        postMcp(false, method, 0, ex.getClass().getSimpleName()+": "+ex.getMessage(), sessionId);
+                    }
                 } finally {
                     if(c!=null)c.disconnect();
                 }
@@ -183,7 +250,8 @@ public class MainActivity extends Activity {
                 c.setDoOutput(true);
                 c.setRequestProperty("Content-Type","application/json");
                 c.setRequestProperty("Accept","application/json, text/event-stream");
-                c.setRequestProperty("MCP-Protocol-Version",MCP_VERSION);
+                c.setRequestProperty("MCP-Protocol-Version",LEGACY_VERSION);
+                c.setRequestProperty("Mcp-Method","notifications/initialized");
                 c.setRequestProperty("User-Agent","NSE-Algo-Signal-Android/1.0");
                 if(sessionId!=null)c.setRequestProperty("Mcp-Session-Id",sessionId);
                 JSONObject req=new JSONObject();
