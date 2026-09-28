@@ -50,6 +50,7 @@ public class MainActivity extends Activity {
             }
         });
         w.addJavascriptInterface(new GrowwBridge(), "AndroidGroww");
+        w.addJavascriptInterface(new NseBridge(), "AndroidNSE");
         setContentView(w);
         w.loadUrl("https://appassets.androidplatform.net/assets/algo_dashboard.html");
     }
@@ -67,6 +68,26 @@ public class MainActivity extends Activity {
         }
         fileCallback.onReceiveValue(results);
         fileCallback = null;
+    }
+
+    public class NseBridge {
+        @JavascriptInterface public void checkServer() {
+            net.execute(() -> {
+                HttpURLConnection c = null;
+                try {
+                    c = (HttpURLConnection)new URL("https://www.nseindia.com/").openConnection();
+                    c.setRequestMethod("GET");
+                    c.setConnectTimeout(10000);
+                    c.setReadTimeout(10000);
+                    c.setRequestProperty("User-Agent","Mozilla/5.0 (Android) NSE-Algo-Signal");
+                    c.setRequestProperty("Accept","text/html,application/xhtml+xml");
+                    int code=c.getResponseCode();
+                    postNse(code>=200 && code<500, "NSE SERVER: HTTP "+code+" • web server reachable; real-time market feed is not implied");
+                } catch(Exception e) {
+                    postNse(false, "NSE SERVER: connection error • "+e.getClass().getSimpleName());
+                } finally { if(c!=null)c.disconnect(); }
+            });
+        }
     }
 
     public class GrowwBridge {
@@ -239,6 +260,13 @@ public class MainActivity extends Activity {
         StringBuilder b=new StringBuilder(); String line;
         while((line=r.readLine())!=null)b.append(line);
         r.close(); return b.toString();
+    }
+
+    private void postNse(final boolean ok, final String msg){
+        runOnUiThread(()->{
+            String safe=msg.replace("\\","\\\\").replace("'","\\'");
+            w.evaluateJavascript("window.nseResult("+ok+",'"+safe+"')",null);
+        });
     }
 
     private void post(final boolean ok, final String msg){
