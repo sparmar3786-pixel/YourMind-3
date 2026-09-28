@@ -40,12 +40,17 @@ header{position:sticky;top:0;z-index:20;background:rgba(6,10,16,.94);backdrop-fi
 <input id="totpSecret" class="input" type="password" autocomplete="off" placeholder="TOTP Secret / Authenticator Key">
 <div class="row" style="margin-top:6px"><div class="metric" style="flex:1"><span>AUTO TOTP</span><b id="totpCode">------</b></div><span id="totpTimer" class="badge">--s</span></div>
 <input id="apiKey" class="input" type="password" autocomplete="off" placeholder="SmartAPI Private API Key">
+<div class="grid"><input id="publicIp" class="input" placeholder="Registered Public IP (optional)"><input id="mac" class="input" placeholder="Registered MAC Address (optional)"></div>
 <button class="btn primary" onclick="angelLogin()">GENERATE TOTP & SECURE LOGIN</button>
+<button class="btn" onclick="angelPublisher()">LOGIN VIA ANGEL ONE SMARTAPI</button>
+<div class="status small">Direct login uses the SmartAPI 2FA API. If Angel One rejects the request at the network/IP layer, use the SmartAPI login button and return through the configured callback.</div>
 <button class="btn" onclick="angelProfile()">VERIFY PROFILE / API ACCESS</button>
 <button class="btn" onclick="angelFeed()">CHECK FEED TOKEN</button>
+<button class="btn" onclick="loadLive()">START LIVE OPTION CHAIN</button>
+<button class="btn" onclick="stopLive()">STOP LIVE FEED</button>
 <button class="btn danger" onclick="angelLogout()">LOGOUT / CLEAR SESSION</button>
 <div id="angelStatus" class="status">Enter your own Angel One credentials. Never send PIN, TOTP or API key in chat.</div></div>
-<div class="card"><div class="sectionTitle">Session</div><div class="grid"><div class="metric"><span>AUTH</span><b id="authState">--</b></div><div class="metric"><span>JWT</span><b id="jwtState">--</b></div><div class="metric"><span>FEED TOKEN</span><b id="feedState">--</b></div><div class="metric"><span>PROFILE</span><b id="profileState">--</b></div></div></div>
+<div class="card"><div class="row"><div class="sectionTitle">Live Option Chain</div><span id="liveBadge" class="badge warn">STOPPED</span></div><div class="grid"><select id="liveIndex" class="input"><option>NIFTY</option><option>BANKNIFTY</option><option>FINNIFTY</option><option>SENSEX</option><option>BANKEX</option></select><div class="metric"><span>LIVE TICKS</span><b id="tickCount">0</b></div></div><div id="liveStatus" class="status">Login first, then start live option chain.</div><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr><th>STRIKE</th><th>TYPE</th><th>LTP</th><th>OI</th><th>OI Δ</th><th>PRICE Δ</th></tr></thead><tbody id="chainBody"></tbody></table></div></div><div class="card"><div class="sectionTitle">Session</div><div class="grid"><div class="metric"><span>AUTH</span><b id="authState">--</b></div><div class="metric"><span>JWT</span><b id="jwtState">--</b></div><div class="metric"><span>FEED TOKEN</span><b id="feedState">--</b></div><div class="metric"><span>PROFILE</span><b id="profileState">--</b></div></div></div>
 </section>
 
 <section id="nse" class="page">
@@ -81,7 +86,7 @@ header{position:sticky;top:0;z-index:20;background:rgba(6,10,16,.94);backdrop-fi
 </main>
 <div class="bottom">Educational analytics • No automatic order execution • Real data only</div>
 <script>
-let toolsList=[];
+let toolsList=[];\nconst liveRows=new Map();let liveTicks=0;
 function tab(id){document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));document.getElementById({dash:'tDash',angel:'tAngel',nse:'tNse',mcp:'tMcp',data:'tData',set:'tSet'}[id]).classList.add('on')}
 function angelLogin(){
   if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing. Rebuild APK.');return}
@@ -89,7 +94,7 @@ function angelLogin(){
   if(!secret){angelMsg(false,'TOTP Secret is required for automatic TOTP generation');return}
   if(!code){angelMsg(false,'Invalid TOTP Secret • check the secret from Angel One 2FA setup');return}
   document.getElementById('totpCode').textContent=code;
-  AndroidAngel.login(v('client'),v('pin'),code,v('apiKey'));
+  AndroidAngel.login(v('client'),v('pin'),code,v('apiKey'),v('publicIp'),'',v('mac'));
 }
 function updateTotp(){
   if(!window.AndroidAngel)return;
@@ -103,10 +108,16 @@ function updateTotp(){
     document.getElementById('totpCode').textContent='------';
   }
 }
+function angelPublisher(){if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing. Rebuild APK.');return}AndroidAngel.publisherLogin(v('apiKey'))}
+function loadLive(){if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing.');return}let idx=v('liveIndex')||'NIFTY';AndroidAngel.loadLive(idx)}
+function stopLive(){if(window.AndroidAngel)AndroidAngel.stopLive()}
 function angelProfile(){if(window.AndroidAngel)AndroidAngel.profile()}
 function angelFeed(){if(window.AndroidAngel)AndroidAngel.feedInfo()}
 function angelLogout(){if(window.AndroidAngel)AndroidAngel.logout()}
 function angelMsg(ok,msg){document.getElementById('angelStatus').textContent=msg;document.getElementById('angelBadge').textContent=ok?'CONNECTED':'ERROR';document.getElementById('angelBadge').className='badge '+(ok?'ok':'bad');document.getElementById('connBadge').textContent=ok?'ANGEL ONLINE':'OFFLINE';document.getElementById('connBadge').className='badge '+(ok?'ok':'warn');document.getElementById('aMini').textContent=ok?'Connected':'Not connected';document.getElementById('aMini').className=ok?'green':'red';if(ok){document.getElementById('source').textContent='Angel One';document.getElementById('session').textContent='Active';document.getElementById('mainState').textContent='API CONNECTED';}}
+window.angelMarketStatus=function(ok,type,msg){document.getElementById('liveStatus').textContent=msg;document.getElementById('liveBadge').textContent=ok?'LIVE':'ERROR';document.getElementById('liveBadge').className='badge '+(ok?'ok':'bad')}
+window.angelMarketTick=function(raw){try{let r=typeof raw==='string'?JSON.parse(raw):raw;liveRows.set(r.symbol,r);liveTicks++;document.getElementById('tickCount').textContent=liveTicks;renderChain()}catch(e){}}
+function renderChain(){let a=[...liveRows.values()].sort((x,y)=>x.strike-y.strike||x.type.localeCompare(y.type));let body=document.getElementById('chainBody');body.innerHTML='';a.slice(0,120).forEach(r=>{let tr=document.createElement('tr');tr.innerHTML='<td>'+Number(r.strike).toFixed(0)+'</td><td>'+r.type+'</td><td>'+Number(r.ltp).toFixed(2)+'</td><td>'+Number(r.oi).toLocaleString('en-IN')+'</td><td>'+Number(r.oiDelta).toLocaleString('en-IN')+'</td><td>'+Number(r.priceDelta).toFixed(2)+'</td>';body.appendChild(tr)})}
 window.angelResult=function(ok,msg){angelMsg(ok,msg);let m=msg.toLowerCase();if(m.includes('jwt'))document.getElementById('jwtState').textContent='READY';if(m.includes('feed token'))document.getElementById('feedState').textContent='READY';if(m.includes('profile'))document.getElementById('profileState').textContent=ok?'VERIFIED':'ERROR';if(m.includes('session cleared')){document.getElementById('authState').textContent='LOGGED OUT';document.getElementById('jwtState').textContent='--';document.getElementById('feedState').textContent='--';}}
 function checkNse(){if(window.AndroidNSE)AndroidNSE.checkServer();else nseMsg(false,'NSE bridge unavailable.')}
 window.nseResult=function(ok,msg){nseMsg(ok,msg)}
@@ -119,6 +130,7 @@ window.nseMcpNativeResult=function(ok,method,code,raw,sid){let o=parseMcp(raw);i
 document.getElementById('files').onchange=e=>{let fs=[...e.target.files];document.getElementById('fileStatus').textContent=fs.length+' file(s) selected • '+fs.map(x=>x.name).join(', ')}
 window.handleAngelCallback=function(authToken,feedToken,state){
   const ok=!!authToken;
+  if(ok && window.AndroidAngel){ AndroidAngel.setSession(v('client'),v('apiKey'),authToken,feedToken); }
   const msg=ok
     ? 'Angel One callback received • '+(feedToken?'Feed token received':'Authentication token received')+(state?' • State received':'')
     : 'Angel One callback returned without an authentication token';
