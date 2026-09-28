@@ -97,6 +97,17 @@ function mcpCall(){let i=Number(document.getElementById('tool').value),t=toolsLi
 function parseMcp(raw){let t=String(raw||'').trim(),arr=[t];let b=t.indexOf('{');if(b>0)arr.push(t.slice(b));for(let x of arr){try{return JSON.parse(x)}catch(e){}}for(let line of t.split(/\r?\n/)){let s=line.trim().replace(/^data:\s*/,'');let q=s.indexOf('{');if(q>=0)s=s.slice(q);try{let o=JSON.parse(s);if(o)return o}catch(e){}}return null}
 window.nseMcpNativeResult=function(ok,method,code,raw,sid){let o=parseMcp(raw);if(!ok){document.getElementById('mcpBadge').textContent='ERROR';document.getElementById('mcpStatus').textContent='HTTP '+code+' • '+String(raw).slice(0,180);return}document.getElementById('mcpBadge').textContent='CONNECTED';document.getElementById('mcpBadge').className='badge ok';if(method==='tools/list'){toolsList=o?.result?.tools||[];let s=document.getElementById('tool');s.innerHTML='';toolsList.forEach((t,i)=>{let z=document.createElement('option');z.value=i;z.textContent=t.name;s.appendChild(z)});document.getElementById('toolCount').textContent=toolsList.length;document.getElementById('mcpStatus').textContent=toolsList.length+' tools loaded';document.getElementById('mMini').textContent='Connected'}else if(method==='tools/call'){document.getElementById('result').textContent=JSON.stringify(o||raw,null,2)}else document.getElementById('mcpStatus').textContent='MCP initialized • tools loading...'}
 document.getElementById('files').onchange=e=>{let fs=[...e.target.files];document.getElementById('fileStatus').textContent=fs.length+' file(s) selected • '+fs.map(x=>x.name).join(', ')}
+window.handleAngelCallback=function(authToken,feedToken,state){
+  const ok=!!authToken;
+  const msg=ok
+    ? 'Angel One callback received • '+(feedToken?'Feed token received':'Authentication token received')+(state?' • State received':'')
+    : 'Angel One callback returned without an authentication token';
+  angelMsg(ok,msg);
+  document.getElementById('authState').textContent=ok?'CALLBACK RECEIVED':'ERROR';
+  document.getElementById('jwtState').textContent=ok?'RECEIVED':'--';
+  document.getElementById('feedState').textContent=feedToken?'RECEIVED':'--';
+  tab('angel');
+};
 function v(id){return document.getElementById(id).value.trim()}
 setInterval(()=>document.getElementById('market').textContent='IST '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'}),1000)
 </script>
