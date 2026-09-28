@@ -224,12 +224,53 @@ public class MainActivity extends Activity {
             requestQuote(token);
         }
         @JavascriptInterface public void testOptionChain(final String token, final String expiry) {
+            getOptionChain(token, "NSE", "NIFTY", expiry);
+        }
+
+        @JavascriptInterface public void getOptionChain(final String token, final String exchange, final String underlying, final String expiry) {
             String e = expiry == null ? "" : expiry.trim();
+            String ex = exchange == null ? "" : exchange.trim().toUpperCase();
+            String u = underlying == null ? "" : underlying.trim().toUpperCase();
             if (!e.matches("\\d{4}-\\d{2}-\\d{2}")) {
-                post(false, "OPTION CHAIN: expiry must be YYYY-MM-DD");
+                postOptionChain(false, "OPTION CHAIN: expiry must be YYYY-MM-DD", "");
                 return;
             }
-            request(token, "https://api.groww.in/v1/option-chain/exchange/NSE/underlying/NIFTY?expiry_date="+e, "NIFTY OPTION CHAIN");
+            if (!(ex.equals("NSE") || ex.equals("BSE"))) {
+                postOptionChain(false, "OPTION CHAIN: exchange must be NSE or BSE", "");
+                return;
+            }
+            if (token == null || token.trim().isEmpty()) {
+                postOptionChain(false, "OPTION CHAIN: Groww Access Token required", "");
+                return;
+            }
+            if (u.isEmpty()) {
+                postOptionChain(false, "OPTION CHAIN: underlying required", "");
+                return;
+            }
+            net.execute(() -> {
+                HttpURLConnection c = null;
+                int code = 0;
+                String body = "";
+                try {
+                    String url = "https://api.groww.in/v1/option-chain/exchange/"+ex+"/underlying/"+u+"?expiry_date="+e;
+                    c = (HttpURLConnection)new URL(url).openConnection();
+                    c.setRequestMethod("GET");
+                    c.setConnectTimeout(15000);
+                    c.setReadTimeout(30000);
+                    c.setRequestProperty("Accept","application/json");
+                    c.setRequestProperty("Authorization","Bearer "+token.trim());
+                    c.setRequestProperty("X-API-VERSION","1.0");
+                    code = c.getResponseCode();
+                    InputStream is = code>=200 && code<400 ? c.getInputStream() : c.getErrorStream();
+                    body = read(is);
+                    boolean ok = code>=200 && code<300;
+                    postOptionChain(ok, "OPTION CHAIN "+ex+" "+u+" • HTTP "+code, body);
+                } catch(Exception exx) {
+                    postOptionChain(false, "OPTION CHAIN connection error • "+exx.getClass().getSimpleName()+" • "+exx.getMessage(), "");
+                } finally {
+                    if(c!=null)c.disconnect();
+                }
+            });
         }
     }
 
@@ -386,6 +427,14 @@ public class MainActivity extends Activity {
         StringBuilder b=new StringBuilder(); String line;
         while((line=r.readLine())!=null)b.append(line);
         r.close(); return b.toString();
+    }
+
+    private void postOptionChain(final boolean ok, final String msg, final String body){
+        runOnUiThread(() -> {
+            String safeMsg = JSONObject.quote(msg==null?"":msg);
+            String safeBody = JSONObject.quote(body==null?"":body);
+            w.evaluateJavascript("window.growwOptionChainResult("+ok+","+safeMsg+","+safeBody+")",null);
+        });
     }
 
     private void postNse(final boolean ok, final String msg){
