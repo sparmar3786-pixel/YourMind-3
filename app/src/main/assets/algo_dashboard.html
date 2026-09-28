@@ -6,13 +6,25 @@
 </style></head><body>
 <header><div class="row"><h1>NSE Algo Signal</h1><span id="market" class="pill ok">IST --</span></div><div class="muted">Groww Live Data + Option Chain + CSV Backtest</div></header>
 <main class="wrap">
-<div class="tabs"><button id="tbDash" class="on" onclick="tab('dash')">Dashboard</button><button id="tbBack" onclick="tab('back')">Backtest</button><button id="tbGroww" onclick="tab('groww')">Groww API</button></div>
+<div class="tabs"><button id="tbDash" class="on" onclick="tab('dash')">Dashboard</button><button id="tbNse" onclick="tab('nse')">NSE Direct Live</button><button id="tbBack" onclick="tab('back')">Backtest</button><button id="tbGroww" onclick="tab('groww')">Groww API</button></div>
 
 <section id="dash" class="page on">
 <div class="card"><div class="row"><b>NIFTY</b><span class="pill">5 MIN</span></div><div id="signal" class="big ok">WAITING FOR LIVE DATA</div><p class="muted">No signal is generated until real market data is confirmed.</p>
 <div class="grid"><div class="metric">LTP<b id="ltp">--</b></div><div class="metric">OI Change<b id="oi">--</b></div><div class="metric">ENTRY<b>--</b></div><div class="metric">SL<b>--</b></div><div class="metric">TARGET<b>--</b></div><div class="metric">R:R<b>--</b></div></div></div>
 <div class="card"><div class="row"><b>PDF fields mapped</b><span class="pill">Groww</span></div><div class="grid"><div class="metric">LTP<b>✓</b></div><div class="metric">OI<b>✓</b></div><div class="metric">OI Δ<b>✓</b></div><div class="metric">Volume<b>✓</b></div><div class="metric">Depth<b>✓</b></div><div class="metric">Greeks<b>✓</b></div></div></div>
 <div class="card"><b>Connection state</b><p id="dashState" class="muted">Groww API not tested in this APK session.</p></div>
+</section>
+
+<section id="nse" class="page">
+<div class="card"><div class="row"><h2 style="margin:0">NSE Direct Live</h2><span id="nseBadge" class="pill warn">FEED NOT CONNECTED</span></div>
+<p class="muted small">This page is reserved for an official NSE real-time feed. It does not use Groww credentials and it never fabricates LTP/OI values.</p>
+<div class="grid">
+<div class="metric">NIFTY LTP<b id="nseNifty">--</b></div><div class="metric">BANKNIFTY<b id="nseBank">--</b></div>
+<div class="metric">FINNIFTY<b id="nseFin">--</b></div><div class="metric">SENSEX<b id="nseSensex">--</b></div>
+</div>
+<button class="btn" onclick="checkNseStatus()">CHECK NSE CONNECTION</button>
+<div id="nseStatus" class="card"><span class="muted">No NSE licensed feed is configured.</span></div></div>
+<div class="card"><b>Important</b><p class="small muted">NSE's current real-time product is delivered as a licensed feed (including leased-line multicast) or through an authorized data vendor. Snapshot/EOD products use separate delivery mechanisms. A normal public HTTP URL cannot be treated as the NSE real-time feed.</p></div>
 </section>
 
 <section id="back" class="page">
@@ -38,7 +50,7 @@
 </main><div class="bottom">Educational analytics only • No automatic order execution</div>
 <script>
 let snaps=[];
-function tab(x){document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(x).classList.add('on');document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));document.getElementById(x==='dash'?'tbDash':x==='back'?'tbBack':'tbGroww').classList.add('on')}
+function tab(x){document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(x).classList.add('on');document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));document.getElementById(x==='dash'?'tbDash':x==='nse'?'tbNse':x==='back'?'tbBack':'tbGroww').classList.add('on')}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function num(v){let n=parseFloat(String(v??'').replace(/,/g,''));return Number.isFinite(n)?n:null}
 function csvCells(line){let a=[],cur='',q=false;for(let i=0;i<line.length;i++){let c=line[i];if(c==='"'){if(q&&line[i+1]==='"'){cur+='"';i++;}else q=!q}else if(c===','&&!q){a.push(cur.trim());cur=''}else cur+=c}a.push(cur.trim());return a}
@@ -57,6 +69,7 @@ function sideSignal(a,b,r,side){let pk=side==='CE'?'ceL':'peL',ok=side==='CE'?'c
 function runBacktest(){let T=0,W=0,L=0,O=0,net=0,out=[];for(let i=1;i<snaps.length-1;i++){let a=mapRows(snaps[i-1].rows),c=mapRows(snaps[i+1].rows);for(let r of snaps[i].rows){for(let side of ['CE','PE']){let sig=sideSignal(a,snaps[i].rows.length?r:r, r, side);if(!sig)continue;let nxt=c.get(sig.strike),price=nxt?(side==='CE'?nxt.ceL:nxt.peL):null;if(price==null){O++;out.push(sig.side+' '+sig.strike+' '+sig.type+' OPEN');continue}T++;if((sig.bullish&&price>=sig.target)||(!sig.bullish&&price<=sig.target)){W++;net+=20;out.push((sig.bullish?'BUY ':'SELL ')+sig.side+' '+sig.strike+' '+sig.type+' WIN +20')}else if((sig.bullish&&price<=sig.sl)||(!sig.bullish&&price>=sig.sl)){L++;net-=10;out.push((sig.bullish?'BUY ':'SELL ')+sig.side+' '+sig.strike+' '+sig.type+' LOSS -10')}else{O++;out.push((sig.bullish?'BUY ':'SELL ')+sig.side+' '+sig.strike+' '+sig.type+' OPEN '+price.toFixed(2))}}}}document.getElementById('trades').textContent=T;document.getElementById('wins').textContent=W;document.getElementById('losses').textContent=L;document.getElementById('open').textContent=O;document.getElementById('rate').textContent=T?(W/T*100).toFixed(1)+'%':'--';document.getElementById('net').textContent=net.toFixed(1);document.getElementById('btRows').innerHTML=out.length?out.slice(0,100).map(esc).join('<br>'):'No qualifying historical signals.'}
 function clearBT(){snaps=[];document.getElementById('fileList').textContent='No snapshots loaded.';runBacktest()}
 function setStatus(ok,msg){document.getElementById('growwStatus').innerHTML='<span class="'+(ok?'ok':'bad')+'">'+esc(msg)+'</span>';document.getElementById('dashState').textContent=msg}
+function checkNseStatus(){if(window.AndroidNSE&&AndroidNSE.checkServer)AndroidNSE.checkServer();else{document.getElementById('nseStatus').innerHTML='<span class="warn">NSE direct feed bridge is not configured in this APK build.</span>';document.getElementById('nseBadge').textContent='FEED NOT CONNECTED'}}
 function testGroww(){let t=document.getElementById('token').value.trim();if(!t){setStatus(false,'Token required.');return}if(window.AndroidGroww)AndroidGroww.testUserProfile(t);else setStatus(false,'Native Groww bridge unavailable. APK build required.')}
 function testQuote(){let t=document.getElementById('token').value.trim();if(!t){setStatus(false,'Token required.');return}if(window.AndroidGroww)AndroidGroww.testQuote(t);else setStatus(false,'Native Groww bridge unavailable. APK build required.')}
 let liveTimer=null;
