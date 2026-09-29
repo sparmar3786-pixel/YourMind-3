@@ -1,144 +1,43 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>NSE Algo Signal</title>
-<style>
-:root{--bg:#060a10;--panel:#0d141e;--panel2:#111b27;--line:#203042;--txt:#eef5fb;--muted:#8c9bad;--green:#27e58a;--red:#ff6576;--gold:#ffc857;--blue:#55a9ff}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% -10%,#18304a 0,#060a10 38%);color:var(--txt);font:14px Inter,Arial,sans-serif}
-header{position:sticky;top:0;z-index:20;background:rgba(6,10,16,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-.top{max-width:900px;margin:auto;padding:15px 14px 12px}.brand{display:flex;align-items:center;gap:10px}.logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(145deg,#173c61,#0b1725);border:1px solid #315b80;display:grid;place-items:center;font-weight:900;color:#7dc1ff}.title{font-size:20px;font-weight:900}.sub{font-size:11px;color:var(--muted);margin-top:2px}.live{margin-left:auto;padding:7px 10px;border-radius:99px;background:#10271e;color:var(--green);font-size:11px;font-weight:800}
-.wrap{max-width:900px;margin:auto;padding:12px 12px 85px}.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px}.tabs button,.btn{border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--txt);padding:11px 9px;font-weight:800}.tabs button.on{background:#17314a;border-color:#2e5d86;color:#fff}
-.page{display:none}.page.on{display:block}.card{background:linear-gradient(145deg,rgba(17,27,39,.98),rgba(10,16,24,.98));border:1px solid var(--line);border-radius:18px;padding:15px;margin:10px 0;box-shadow:0 12px 30px rgba(0,0,0,.18)}.hero{padding:18px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.eyebrow{font-size:10px;letter-spacing:1.2px;color:var(--muted);font-weight:900}.signal{font-size:26px;font-weight:950;margin:7px 0}.green{color:var(--green)}.red{color:var(--red)}.gold{color:var(--gold)}.muted{color:var(--muted)}.small{font-size:11px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.metric{background:#080e16;border:1px solid #172536;border-radius:13px;padding:11px}.metric span{font-size:10px;color:var(--muted);display:block}.metric b{font-size:17px;display:block;margin-top:5px}.btn{width:100%;margin-top:8px}.btn.primary{background:linear-gradient(135deg,#1767a8,#124574);border-color:#3984bc}.btn.danger{background:#2a1319;color:#ff9aa5}.input,textarea,select{width:100%;padding:12px;border-radius:12px;border:1px solid #26384b;background:#070d14;color:#fff;margin:6px 0;outline:none}.input:focus,textarea:focus,select:focus{border-color:#3e81b6}.badge{padding:6px 9px;border-radius:99px;background:#172331;color:var(--muted);font-size:10px;font-weight:900}.badge.ok{background:#10271e;color:var(--green)}.badge.warn{background:#2a2414;color:var(--gold)}.badge.bad{background:#2b151b;color:var(--red)}.status{margin-top:9px;padding:11px;border-radius:12px;background:#080e15;border:1px solid #172536;color:var(--muted);line-height:1.45}.sectionTitle{font-size:16px;font-weight:900}.list{display:grid;gap:7px}.item{display:flex;justify-content:space-between;gap:10px;padding:10px;border:1px solid #1a2939;border-radius:12px;background:#0a1119}.bottom{position:fixed;bottom:0;left:0;right:0;z-index:30;background:rgba(7,12,18,.96);border-top:1px solid var(--line);padding:9px;text-align:center;color:#738397;font-size:10px}
-@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}.tabs{grid-template-columns:repeat(6,1fr)}}
-</style>
-</head>
-<body>
-<header><div class="top"><div class="brand"><div class="logo">N</div><div><div class="title">NSE Algo Signal</div><div class="sub">Angel One SmartAPI • NSE MCP • Analytics Engine</div></div><span id="market" class="live">IST --</span></div></div></header>
-<main class="wrap">
-<div class="tabs">
-<button id="tDash" class="on" onclick="tab('dash')">Dashboard</button>
-<button id="tAngel" onclick="tab('angel')">Angel API</button>
-<button id="tNse" onclick="tab('nse')">NSE</button>
-<button id="tMcp" onclick="tab('mcp')">NSE MCP</button>
-<button id="tData" onclick="tab('data')">Data</button>
-<button id="tSet" onclick="tab('set')">Settings</button>
-</div>
-
-<section id="dash" class="page on">
-<div class="card hero"><div class="row"><div><div class="eyebrow">MARKET ENGINE</div><div class="signal" id="mainState">READY TO CONNECT</div></div><span id="connBadge" class="badge warn">OFFLINE</span></div><p class="muted small">No signal is fabricated. Analysis starts only after verified data reaches the app.</p>
-<div class="grid"><div class="metric"><span>DATA SOURCE</span><b id="source">--</b></div><div class="metric"><span>SESSION</span><b id="session">--</b></div><div class="metric"><span>NIFTY</span><b id="nifty">--</b></div><div class="metric"><span>ATM</span><b id="atm">--</b></div></div></div>
-<div class="card"><div class="row"><div class="sectionTitle">Connection Center</div><span class="badge">STEP 1</span></div><div class="list" style="margin-top:10px"><div class="item"><span>Angel One SmartAPI</span><span id="aMini" class="green">Not connected</span></div><div class="item"><span>NSE MCP</span><span id="mMini">Not connected</span></div><div class="item"><span>Licensed NSE feed</span><span class="muted">Not configured</span></div></div><button class="btn primary" onclick="tab('angel')">CONNECT ANGEL ONE</button></div>
-<div class="card"><div class="sectionTitle">Build Status</div><p class="muted small">Groww integration removed from the active UI and native broker bridge. NSE remains available through the existing NSE server/MCP architecture. New trading features will be added one-by-one after this base is stable.</p></div>
-</section>
-
-<section id="angel" class="page">
-<div class="card hero"><div class="row"><div><div class="eyebrow">BROKER CONNECTION</div><div class="sectionTitle">Angel One SmartAPI</div></div><span id="angelBadge" class="badge warn">NOT CONNECTED</span></div>
-<p class="muted small">Enter the current 6-digit TOTP from your Angel One authenticator. The APK sends only that current code for login.</p>
-<input id="client" class="input" autocomplete="off" placeholder="Angel One Client Code">
-<input id="pin" class="input" type="password" autocomplete="off" placeholder="Trading PIN">
-<input id="totpSecret" class="input" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Current 6-digit TOTP">
-<div class="row" style="margin-top:6px"><div class="metric" style="flex:1"><span>TOTP</span><b id="totpCode">------</b></div><span id="totpTimer" class="badge">--s</span></div>
-<input id="apiKey" class="input" type="password" autocomplete="off" placeholder="SmartAPI Private API Key">
-<div class="status small">Angel One network headers are handled by the app. Enter only your Client ID, MPIN, current TOTP and SmartAPI API Key.</div>
-<button class="btn primary" onclick="angelLogin()">SECURE LOGIN</button>
-<button class="btn" onclick="angelPublisher()">LOGIN VIA ANGEL ONE SMARTAPI</button>
-<div class="status small">Direct login uses the documented SmartAPI request and the APK resolves the required network headers locally. If Angel One returns Request Rejected, the exact HTTP/API response is shown instead of being hidden.</div>
-<button class="btn" onclick="angelProfile()">VERIFY PROFILE / API ACCESS</button>
-<button class="btn" onclick="angelFeed()">CHECK FEED TOKEN</button>
-<button class="btn" onclick="loadLive()">START LIVE OPTION CHAIN</button>
-<button class="btn" onclick="stopLive()">STOP LIVE FEED</button>
-<button class="btn danger" onclick="angelLogout()">LOGOUT / CLEAR SESSION</button>
-<div id="angelStatus" class="status">Enter your own Angel One credentials. Never send PIN, TOTP or API key in chat.</div></div>
-<div class="card"><div class="row"><div class="sectionTitle">Live Option Chain</div><span id="liveBadge" class="badge warn">STOPPED</span></div><div class="grid"><select id="liveIndex" class="input"><option>NIFTY</option><option>BANKNIFTY</option><option>FINNIFTY</option><option>SENSEX</option><option>BANKEX</option></select><div class="metric"><span>LIVE TICKS</span><b id="tickCount">0</b></div></div><div id="liveStatus" class="status">Login first, then start live option chain.</div><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr><th>STRIKE</th><th>TYPE</th><th>LTP</th><th>OI</th><th>OI Δ</th><th>PRICE Δ</th></tr></thead><tbody id="chainBody"></tbody></table></div></div><div class="card"><div class="sectionTitle">Session</div><div class="grid"><div class="metric"><span>AUTH</span><b id="authState">--</b></div><div class="metric"><span>JWT</span><b id="jwtState">--</b></div><div class="metric"><span>FEED TOKEN</span><b id="feedState">--</b></div><div class="metric"><span>PROFILE</span><b id="profileState">--</b></div></div></div>
-</section>
-
-<section id="nse" class="page">
-<div class="card"><div class="row"><div class="sectionTitle">NSE Connection</div><span id="nseBadge" class="badge warn">CHECK ONLY</span></div>
-<p class="muted small">This check confirms that the NSE website is reachable. It does not claim a zero-delay F&O feed.</p>
-<button class="btn primary" onclick="checkNse()">CHECK NSE SERVER</button><div id="nseStatus" class="status">Not checked.</div></div>
-<div class="card"><div class="sectionTitle">Real-time feed slot</div><p class="muted small">The app keeps a secure slot for an authorized NSE/data-vendor backend. No NSE private credentials are embedded in the APK.</p><div class="metric"><span>FEED</span><b>Not configured</b></div></div>
-</section>
-
-<section id="mcp" class="page">
-<div class="card"><div class="row"><div class="sectionTitle">NSE MCP</div><span id="mcpBadge" class="badge warn">NOT CONNECTED</span></div>
-<input id="mcpUrl" class="input" value="https://mcp.nseindia.in/cmmkt/mcp">
-<button class="btn primary" onclick="mcpConnect()">CONNECT NSE MCP</button><button class="btn" onclick="mcpTools()">REFRESH TOOLS</button>
-<div id="mcpStatus" class="status">Official NSE MCP connector.</div>
-<div class="metric" style="margin-top:8px"><span>TOOLS</span><b id="toolCount">0</b></div>
-<select id="tool" class="input"><option value="">No tools</option></select>
-<textarea id="args" class="input" rows="4" placeholder='Tool arguments JSON'></textarea>
-<button class="btn" onclick="mcpCall()">CALL TOOL</button>
-<pre id="result" class="status" style="white-space:pre-wrap;max-height:280px;overflow:auto"></pre></div>
-</section>
-
-<section id="data" class="page">
-<div class="card"><div class="sectionTitle">Market Data Workspace</div><p class="muted small">Feature modules will be added here step-by-step. For now the app keeps the upload pipeline ready for CSV, Excel, PDF and images.</p>
-<label class="btn" style="display:block;text-align:center">＋ SELECT MARKET FILES<input id="files" type="file" multiple hidden accept=".csv,.xls,.xlsx,.pdf,image/*"></label>
-<div id="fileStatus" class="status">No files selected.</div></div>
-<div class="card"><div class="sectionTitle">Analysis Engine</div><div class="grid"><div class="metric"><span>CALL</span><b>WAIT</b></div><div class="metric"><span>PUT</span><b>WAIT</b></div><div class="metric"><span>OI</span><b>READY</b></div><div class="metric"><span>EMA</span><b>READY</b></div></div><p class="muted small">Entry / SL / Target logic will be connected after the data contract is finalized.</p></div>
-</section>
-
-<section id="set" class="page">
-<div class="card"><div class="sectionTitle">App Settings</div><button class="btn" onclick="document.body.classList.toggle('bright')">TOGGLE APPEARANCE</button><div class="status">Version 1.1 • Broker: Angel One • NSE connector retained • Groww UI removed.</div></div>
-<div class="card"><div class="sectionTitle">Security</div><p class="muted small">The native bridge does not persist the Angel JWT, refresh token, feed token or API key to disk. Logout clears the in-memory session.</p></div>
-</section>
-</main>
-<div class="bottom">Educational analytics • No automatic order execution • Real data only</div>
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta charset="utf-8"><title>NSE Algo Signal</title><style>
+:root{--b:#060a10;--p:#0d141e;--q:#111b27;--l:#203042;--t:#eef5fb;--m:#8c9bad;--g:#27e58a;--r:#ff6576;--y:#ffc857;--x:#55a9ff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% -10%,#18304a,#060a10 38%);color:var(--t);font:14px Arial,sans-serif}.top{position:sticky;top:0;z-index:5;background:#060a10f5;border-bottom:1px solid var(--l);padding:12px}.brand{max-width:1100px;margin:auto;display:flex;align-items:center;gap:10px}.logo{width:40px;height:40px;border-radius:12px;background:#173c61;display:grid;place-items:center;font-weight:900;color:#7dc1ff}.title{font-size:19px;font-weight:900}.sub,.muted{color:var(--m)}.live{margin-left:auto;color:var(--g);font-size:10px}.wrap{max-width:1100px;margin:auto;padding:10px 10px 65px}.tabs{display:flex;gap:6px;overflow:auto;margin-bottom:8px}.tabs button,.btn{border:1px solid var(--l);border-radius:11px;background:var(--q);color:var(--t);padding:10px;font-weight:800;white-space:nowrap}.tabs .on{background:#17314a}.page{display:none}.page.on{display:block}.card{background:linear-gradient(145deg,#111b27,#0a1018);border:1px solid var(--l);border-radius:16px;padding:14px;margin:8px 0}.row{display:flex;justify-content:space-between;align-items:center;gap:8px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.metric{background:#080e16;border:1px solid #172536;border-radius:11px;padding:10px}.metric span{display:block;font-size:9px;color:var(--m)}.metric b{display:block;margin-top:4px}.btn{width:100%;margin-top:7px}.primary{background:#1767a8!important}.danger{color:#ff9aa5!important}.input,textarea,select{width:100%;padding:11px;margin:5px 0;background:#070d14;color:#fff;border:1px solid #26384b;border-radius:10px}.badge{padding:5px 8px;border-radius:20px;background:#172331;color:var(--m);font-size:9px}.ok{color:var(--g);background:#10271e}.warn{color:var(--y);background:#2a2414}.bad{color:var(--r);background:#2b151b}.status{padding:10px;margin-top:7px;border-radius:10px;background:#080e15;border:1px solid #172536;color:var(--m);font-size:11px}.bottom{position:fixed;bottom:0;left:0;right:0;background:#070c12f7;border-top:1px solid var(--l);padding:8px;text-align:center;color:#738397;font-size:9px}table{width:100%;border-collapse:collapse;font-size:10px}td,th{padding:6px;border-bottom:1px solid #1a2939;text-align:left}@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}.tabs{flex-wrap:wrap}.tabs button{flex:1}}</style></head><body>
+<header class="top"><div class="brand"><div class="logo">N</div><div><div class="title">NSE Algo Signal</div><div class="sub">Angel One SmartAPI • NSE MCP • Live Data</div></div><span id="clock" class="live">IST --</span></div></header><main class="wrap"><nav id="tabs" class="tabs"></nav>
+<section id="dash" class="page on"><div class="card"><div class="row"><div><small class="muted">MARKET ENGINE</small><h2 id="state">READY TO CONNECT</h2></div><span id="conn" class="badge warn">OFFLINE</span></div><p class="muted">Real API data only. No fake market values. No automatic orders.</p><div class="grid"><div class="metric"><span>DATA SOURCE</span><b id="source">--</b></div><div class="metric"><span>SESSION</span><b id="session">--</b></div><div class="metric"><span>NIFTY</span><b>--</b></div><div class="metric"><span>ATM</span><b>--</b></div></div></div><div class="card"><b>Connection Center</b><div class="status">Angel One: <span id="aMini">Not connected</span><br>NSE MCP: <span id="mMini">Not connected</span><br>Strategy engine: deferred</div><button class="btn primary" onclick="tab('angel')">CONNECT ANGEL ONE</button></div></section>
+<section id="market" class="page"><div class="card"><b>Market</b><div id="marketGrid" class="grid"></div><div class="status">Verified live feed required for values.</div></div></section>
+<section id="commodity" class="page"><div class="card"><b>Commodity</b><div id="commGrid" class="grid"></div><div class="status">Gold, Silver, Crude, Natural Gas, Copper, Aluminium, Zinc, Lead.</div></div></section>
+<section id="signals" class="page"><div class="card"><h2>WAIT / DISABLED</h2><span class="badge warn">STRATEGY DEFERRED</span><p class="muted">No Buy/Sell signal until API/OI/EMA data and 100+ trade backtest are validated.</p><div class="grid"><div class="metric"><span>CALL</span><b>WAIT</b></div><div class="metric"><span>PUT</span><b>WAIT</b></div><div class="metric"><span>SL/TARGET</span><b>--</b></div><div class="metric"><span>BACKTEST</span><b>--</b></div></div></div></section>
+<section id="oi" class="page"><div class="card"><b>OI Lab</b><div class="grid"><select class="input"><option>NIFTY</option><option>BANKNIFTY</option><option>FINNIFTY</option><option>SENSEX</option></select><select class="input"><option>ALL</option><option>CE</option><option>PE</option></select><select class="input"><option>ATM</option><option>ITM</option><option>OTM</option></select><select class="input"><option>5m</option><option>15m</option><option>30m</option></select></div><div class="status">OI/OI change, price change, PCR and support/resistance only from verified option-chain data.</div></div></section>
+<section id="watch" class="page"><div class="card"><b>Watchlist</b><div id="watchGrid" class="grid"></div></div></section>
+<section id="search" class="page"><div class="card"><b>Search</b><input class="input" placeholder="Index, stock, commodity or instrument"><div class="status">AI-ready. No fabricated results.</div></div></section>
+<section id="charts" class="page"><div class="card"><b>Charts</b><div class="grid"><button class="btn">1m</button><button class="btn">5m</button><button class="btn">15m</button><button class="btn">1h</button></div><div class="metric"><span>INDICATORS</span><b>8 EMA / 13 EMA</b></div><div class="status">Live chart after data connection.</div></div></section>
+<section id="chain" class="page"><div class="card"><div class="row"><b>Option Chain</b><span id="liveBadge" class="badge warn">STOPPED</span></div><div class="grid"><select id="idx" class="input"><option>NIFTY</option><option>BANKNIFTY</option><option>FINNIFTY</option><option>SENSEX</option><option>BANKEX</option></select><div class="metric"><span>TICKS</span><b id="ticks">0</b></div></div><div id="liveStatus" class="status">Login first.</div><div style="overflow:auto"><table><thead><tr><th>STRIKE</th><th>TYPE</th><th>LTP</th><th>OI</th><th>OI Δ</th><th>PRICE Δ</th></tr></thead><tbody id="chainBody"></tbody></table></div></div></section>
+<section id="news" class="page"><div class="card"><b>News</b><span class="badge warn">VERIFIED SOURCE</span><p class="muted">Live headlines require a verified server-side source, timestamp and source name. No fabricated news.</p></div></section>
+<section id="details" class="page"><div class="card"><b>Market Details</b><div class="grid"><div class="metric"><span>FII</span><b>--</b></div><div class="metric"><span>DII</span><b>--</b></div><div class="metric"><span>ADV/DEC</span><b>--</b></div><div class="metric"><span>SESSION</span><b>--</b></div></div></div></section>
+<section id="angel" class="page"><div class="card"><div class="row"><b>Angel One SmartAPI</b><span id="angelBadge" class="badge warn">NOT CONNECTED</span></div><p class="muted">Enter credentials only here. Never send PIN/TOTP/API key in chat.</p><input id="client" class="input" placeholder="Angel One Client Code"><input id="pin" class="input" type="password" placeholder="Trading PIN"><input id="totp" class="input" inputmode="numeric" maxlength="6" placeholder="Current 6-digit TOTP"><input id="key" class="input" type="password" placeholder="SmartAPI Private API Key"><button class="btn primary" onclick="login()">SECURE LOGIN</button><button class="btn" onclick="pub()">LOGIN VIA ANGEL ONE SMARTAPI</button><button class="btn" onclick="profile()">VERIFY PROFILE / API ACCESS</button><button class="btn" onclick="feed()">CHECK FEED TOKEN</button><button class="btn" onclick="start()">START LIVE OPTION CHAIN</button><button class="btn" onclick="stop()">STOP LIVE FEED</button><button class="btn danger" onclick="logout()">LOGOUT / CLEAR SESSION</button><div id="angelStatus" class="status">Not connected.</div></div><div class="card"><div class="grid"><div class="metric"><span>AUTH</span><b id="auth">--</b></div><div class="metric"><span>JWT</span><b id="jwt">--</b></div><div class="metric"><span>FEED TOKEN</span><b id="feed">--</b></div><div class="metric"><span>PROFILE</span><b id="prof">--</b></div></div></div></section>
+<section id="nse" class="page"><div class="card"><b>NSE</b><span id="nseBadge" class="badge warn">CHECK ONLY</span><p class="muted">Reachability does not imply a real-time F&O feed.</p><button class="btn primary" onclick="nse()">CHECK NSE SERVER</button><div id="nseStatus" class="status">Not checked.</div></div></section>
+<section id="mcp" class="page"><div class="card"><b>NSE MCP</b><input id="mcpUrl" class="input" value="https://mcp.nseindia.in/cmmkt/mcp"><button class="btn primary" onclick="mcp()">CONNECT NSE MCP</button><button class="btn" onclick="tools()">REFRESH TOOLS</button><div id="mcpStatus" class="status">Not connected.</div><select id="tool" class="input"></select><textarea id="args" class="input" rows="3" placeholder="Tool arguments JSON"></textarea><button class="btn" onclick="callTool()">CALL TOOL</button><pre id="result" class="status"></pre></div></section>
+<section id="data" class="page"><div class="card"><b>Data</b><p class="muted">CSV, Excel, PDF and image intake.</p><input id="files" type="file" multiple accept=".csv,.xls,.xlsx,.pdf,image/*"><div id="fileStatus" class="status">No files selected.</div></div></section>
+<section id="instruments" class="page"><div class="card"><b>Instruments</b><input class="input" placeholder="Search instrument universe"><div class="status">Instrument master from connected source.</div></div></section>
+<section id="settings" class="page"><div class="card"><b>Settings</b><button class="btn" onclick="document.body.classList.toggle('bright')">TOGGLE DARK / LIGHT</button><div class="grid"><div class="metric"><span>TIMEFRAMES</span><b>1m 2m 3m 5m 10m 15m 30m 1h 2h 4h 1D</b></div><div class="metric"><span>INDICATORS</span><b>8 EMA / 13 EMA</b></div></div></div></section>
+<section id="more" class="page"><div class="card"><b>More</b><div class="list"><div class="item">Portfolio / Positions — Read-only</div><div class="item">Orders — Read-only</div><div class="item">AI — Ready</div><div class="item">Automatic orders — Disabled</div></div></div><div class="card"><b>Disclaimer</b><p class="muted">Educational analytics only. No profit guarantee.</p></div></section>
+</main><div class="bottom">18 tabs • Real API data only • No fake/demo market values • No order placement</div>
 <script>
-let toolsList=[];
-const liveRows=new Map();let liveTicks=0;
-function tab(id){document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));document.getElementById({dash:'tDash',angel:'tAngel',nse:'tNse',mcp:'tMcp',data:'tData',set:'tSet'}[id]).classList.add('on')}
-function angelLogin(){
-  if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing. Rebuild APK.');return}
-  const client=v('client'), pin=v('pin'), key=v('apiKey'), code=v('totpSecret').replace(/\D/g,'');
-  if(!client||!pin||!key){angelMsg(false,'Client Code, MPIN and SmartAPI API Key are required');return}
-  if(!/^\d{6}$/.test(code)){angelMsg(false,'Enter the current 6-digit Google Authenticator TOTP');return}
-    document.getElementById('totpCode').textContent=code;
-  AndroidAngel.login(client,pin,code,key);
-}
-function updateTotp(){
-  const code=v('totpSecret').replace(/\D/g,'').slice(0,6);
-  document.getElementById('totpCode').textContent=code||'------';
-  document.getElementById('totpTimer').textContent='MANUAL';
-}
-function angelPublisher(){if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing. Rebuild APK.');return}AndroidAngel.publisherLogin(v('apiKey'))}
-function loadLive(){if(!window.AndroidAngel){angelMsg(false,'Native Angel bridge missing.');return}let idx=v('liveIndex')||'NIFTY';AndroidAngel.loadLive(idx)}
-function stopLive(){if(window.AndroidAngel)AndroidAngel.stopLive()}
-function angelProfile(){if(window.AndroidAngel)AndroidAngel.profile()}
-function angelFeed(){if(window.AndroidAngel)AndroidAngel.feedInfo()}
-function angelLogout(){if(window.AndroidAngel)AndroidAngel.logout()}
-function angelMsg(ok,msg){document.getElementById('angelStatus').textContent=msg;document.getElementById('angelBadge').textContent=ok?'CONNECTED':'ERROR';document.getElementById('angelBadge').className='badge '+(ok?'ok':'bad');document.getElementById('connBadge').textContent=ok?'ANGEL ONLINE':'OFFLINE';document.getElementById('connBadge').className='badge '+(ok?'ok':'warn');document.getElementById('aMini').textContent=ok?'Connected':'Not connected';document.getElementById('aMini').className=ok?'green':'red';if(ok){document.getElementById('source').textContent='Angel One';document.getElementById('session').textContent='Active';document.getElementById('mainState').textContent='API CONNECTED';}}
-window.angelMarketStatus=function(ok,type,msg){document.getElementById('liveStatus').textContent=msg;document.getElementById('liveBadge').textContent=ok?'LIVE':'ERROR';document.getElementById('liveBadge').className='badge '+(ok?'ok':'bad')}
-let chainRenderQueued=false;let lastChainRender=0;
-window.angelMarketTick=function(raw){try{let r=typeof raw==='string'?JSON.parse(raw):raw;liveRows.set(r.symbol,r);liveTicks++;if((liveTicks%5)===0)document.getElementById('tickCount').textContent=liveTicks;if(!chainRenderQueued){chainRenderQueued=true;setTimeout(function(){chainRenderQueued=false;lastChainRender=Date.now();renderChain()},100)}}catch(e){}}
-function renderChain(){let a=[...liveRows.values()].sort((x,y)=>x.strike-y.strike||x.type.localeCompare(y.type));let body=document.getElementById('chainBody');body.innerHTML='';a.slice(0,120).forEach(r=>{let tr=document.createElement('tr');tr.innerHTML='<td>'+Number(r.strike).toFixed(0)+'</td><td>'+r.type+'</td><td>'+Number(r.ltp).toFixed(2)+'</td><td>'+Number(r.oi).toLocaleString('en-IN')+'</td><td>'+Number(r.oiDelta).toLocaleString('en-IN')+'</td><td>'+Number(r.priceDelta).toFixed(2)+'</td>';body.appendChild(tr)})}
-window.angelResult=function(ok,msg){angelMsg(ok,msg);let m=msg.toLowerCase();if(m.includes('jwt'))document.getElementById('jwtState').textContent='READY';if(m.includes('feed token'))document.getElementById('feedState').textContent='READY';if(m.includes('profile'))document.getElementById('profileState').textContent=ok?'VERIFIED':'ERROR';if(m.includes('session cleared')){document.getElementById('authState').textContent='LOGGED OUT';document.getElementById('jwtState').textContent='--';document.getElementById('feedState').textContent='--';}}
-function checkNse(){if(window.AndroidNSE)AndroidNSE.checkServer();else nseMsg(false,'NSE bridge unavailable.')}
-window.nseResult=function(ok,msg){nseMsg(ok,msg)}
-function nseMsg(ok,msg){document.getElementById('nseStatus').textContent=msg;document.getElementById('nseBadge').textContent=ok?'REACHABLE':'ERROR';document.getElementById('nseBadge').className='badge '+(ok?'ok':'bad')}
-function mcpConnect(){let u=v('mcpUrl');if(window.AndroidNseMcp){document.getElementById('mcpStatus').textContent='Connecting...';AndroidNseMcp.connect(u)}}
-function mcpTools(){let u=v('mcpUrl');if(window.AndroidNseMcp){document.getElementById('mcpStatus').textContent='Loading tools...';AndroidNseMcp.listTools(u)}}
-function mcpCall(){let i=Number(document.getElementById('tool').value),t=toolsList[i];if(!t)return;let a={};try{a=JSON.parse(v('args')||'{}')}catch(e){document.getElementById('result').textContent='Invalid JSON';return}AndroidNseMcp.callTool(v('mcpUrl'),t.name,JSON.stringify(a))}
-function parseMcp(raw){let t=String(raw||'').trim(),arr=[t];let b=t.indexOf('{');if(b>0)arr.push(t.slice(b));for(let x of arr){try{return JSON.parse(x)}catch(e){}}for(let line of t.split(/\r?\n/)){let s=line.trim().replace(/^data:\s*/,'');let q=s.indexOf('{');if(q>=0)s=s.slice(q);try{let o=JSON.parse(s);if(o)return o}catch(e){}}return null}
-window.nseMcpNativeResult=function(ok,method,code,raw,sid){let o=parseMcp(raw);if(!ok){document.getElementById('mcpBadge').textContent='ERROR';document.getElementById('mcpStatus').textContent='HTTP '+code+' • '+String(raw).slice(0,180);return}document.getElementById('mcpBadge').textContent='CONNECTED';document.getElementById('mcpBadge').className='badge ok';if(method==='tools/list'){toolsList=o?.result?.tools||[];let s=document.getElementById('tool');s.innerHTML='';toolsList.forEach((t,i)=>{let z=document.createElement('option');z.value=i;z.textContent=t.name;s.appendChild(z)});document.getElementById('toolCount').textContent=toolsList.length;document.getElementById('mcpStatus').textContent=toolsList.length+' tools loaded';document.getElementById('mMini').textContent='Connected'}else if(method==='tools/call'){document.getElementById('result').textContent=JSON.stringify(o||raw,null,2)}else document.getElementById('mcpStatus').textContent='MCP initialized • tools loading...'}
-document.getElementById('files').onchange=e=>{let fs=[...e.target.files];document.getElementById('fileStatus').textContent=fs.length+' file(s) selected • '+fs.map(x=>x.name).join(', ')}
-window.handleAngelCallback=function(authToken,feedToken,state){
-  const ok=!!authToken;
-  if(ok && window.AndroidAngel){ AndroidAngel.setSession(v('client'),v('apiKey'),authToken,feedToken); }
-  const msg=ok
-    ? 'Angel One callback received • '+(feedToken?'Feed token received':'Authentication token received')+(state?' • State received':'')
-    : 'Angel One callback returned without an authentication token';
-  angelMsg(ok,msg);
-  document.getElementById('authState').textContent=ok?'CALLBACK RECEIVED':'ERROR';
-  document.getElementById('jwtState').textContent=ok?'RECEIVED':'--';
-  document.getElementById('feedState').textContent=feedToken?'RECEIVED':'--';
-  tab('angel');
-};
+const T=[['dash','Dashboard'],['market','Market'],['commodity','Commodity'],['signals','Signals'],['oi','OI Lab'],['watch','Watchlist'],['search','Search'],['charts','Charts'],['chain','Option Chain'],['news','News'],['details','Market Details'],['angel','Angel API'],['nse','NSE'],['mcp','NSE MCP'],['data','Data'],['instruments','Instruments'],['settings','Settings'],['more','More']];
+const tb=document.getElementById('tabs');T.forEach((x,i)=>{let b=document.createElement('button');b.id='t'+x[0];b.textContent=(i+1)+'. '+x[1];b.onclick=()=>tab(x[0]);tb.appendChild(b)});tDash.classList.add('on');
+function tab(id){document.querySelectorAll('.page').forEach(e=>e.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('.tabs button').forEach(e=>e.classList.remove('on'));document.getElementById('t'+id).classList.add('on')}
+function fill(id,a){document.getElementById(id).innerHTML=a.map(x=>'<div class="metric"><span>'+x+'</span><b>--</b></div>').join('')}
+fill('marketGrid',['NIFTY 50','BANKNIFTY','FINNIFTY','SENSEX']);fill('commGrid',['GOLD','SILVER','CRUDE OIL','NATURAL GAS','COPPER','ALUMINIUM','ZINC','LEAD']);fill('watchGrid',['NIFTY','BANKNIFTY','SENSEX','RELIANCE','HDFCBANK','ICICIBANK']);
 function v(id){return document.getElementById(id).value.trim()}
-setInterval(()=>{
-  document.getElementById('market').textContent='IST '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'});
-  updateTotp();
-},1000)
-</script>
-</body></html>
+function msg(ok,s){angelStatus.textContent=s;angelBadge.textContent=ok?'CONNECTED':'ERROR';angelBadge.className='badge '+(ok?'ok':'bad');conn.textContent=ok?'ANGEL ONLINE':'OFFLINE';conn.className='badge '+(ok?'ok':'warn');aMini.textContent=ok?'Connected':'Not connected';if(ok){source.textContent='Angel One';session.textContent='Active';state.textContent='API CONNECTED'}}
+function login(){if(!AndroidAngel){msg(false,'Native Angel bridge missing. Rebuild APK.');return}let c=v('client'),p=v('pin'),o=v('totp').replace(/\D/g,''),k=v('key');if(!c||!p||!k||!/^[0-9]{6}$/.test(o)){msg(false,'Client Code, MPIN, current 6-digit TOTP and API Key are required');return}AndroidAngel.login(c,p,o,k)}
+function pub(){if(AndroidAngel)AndroidAngel.publisherLogin(v('key'))}function profile(){if(AndroidAngel)AndroidAngel.profile()}function feed(){if(AndroidAngel)AndroidAngel.feedInfo()}function start(){if(AndroidAngel)AndroidAngel.loadLive(v('idx'))}function stop(){if(AndroidAngel)AndroidAngel.stopLive()}function logout(){if(AndroidAngel)AndroidAngel.logout()}
+window.angelResult=function(ok,s){msg(ok,s);let m=s.toLowerCase();if(m.includes('jwt'))jwt.textContent='READY';if(m.includes('feed token'))feed.textContent='READY';if(m.includes('profile'))prof.textContent=ok?'VERIFIED':'ERROR';if(m.includes('session cleared'))auth.textContent='LOGGED OUT'}
+window.angelMarketStatus=function(ok,t,s){liveStatus.textContent=s;liveBadge.textContent=ok?'LIVE':'ERROR';liveBadge.className='badge '+(ok?'ok':'bad')}
+const rows=new Map();window.angelMarketTick=function(raw){try{let r=typeof raw==='string'?JSON.parse(raw):raw;rows.set(r.symbol,r);ticks.textContent=rows.size;chainBody.innerHTML=[...rows.values()].sort((a,b)=>a.strike-b.strike).slice(0,120).map(r=>'<tr><td>'+r.strike+'</td><td>'+r.type+'</td><td>'+Number(r.ltp).toFixed(2)+'</td><td>'+r.oi+'</td><td>'+r.oiDelta+'</td><td>'+Number(r.priceDelta).toFixed(2)+'</td></tr>').join('')}catch(e){}}
+function nse(){if(AndroidNSE)AndroidNSE.checkServer();else nseStatus.textContent='NSE bridge unavailable'}
+window.nseResult=function(ok,s){nseStatus.textContent=s;nseBadge.textContent=ok?'REACHABLE':'ERROR';nseBadge.className='badge '+(ok?'ok':'bad')}
+let tl=[];function mcp(){if(AndroidNseMcp)AndroidNseMcp.connect(v('mcpUrl'))}function tools(){if(AndroidNseMcp)AndroidNseMcp.listTools(v('mcpUrl'))}function callTool(){let t=tl[Number(tool.value)];if(!t)return;let a={};try{a=JSON.parse(v('args')||'{}')}catch(e){result.textContent='Invalid JSON';return}AndroidNseMcp.callTool(v('mcpUrl'),t.name,JSON.stringify(a))}
+function pm(raw){try{return JSON.parse(raw)}catch(e){let q=String(raw).indexOf('{');try{return JSON.parse(String(raw).slice(q))}catch(z){return null}}}
+window.nseMcpNativeResult=function(ok,method,code,raw){if(!ok){mcpStatus.textContent='HTTP '+code+' • '+String(raw).slice(0,180);return}let o=pm(raw);if(method==='tools/list'){tl=o?.result?.tools||[];tool.innerHTML='';tl.forEach((x,i)=>{let z=document.createElement('option');z.value=i;z.textContent=x.name;tool.appendChild(z)});mcpStatus.textContent=tl.length+' tools loaded';mMini.textContent='Connected'}else if(method==='tools/call')result.textContent=JSON.stringify(o||raw,null,2);else mcpStatus.textContent='MCP initialized'}
+files.onchange=e=>fileStatus.textContent=e.target.files.length+' file(s) selected • '+[...e.target.files].map(x=>x.name).join(', ');
+setInterval(()=>clock.textContent='IST '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'}),1000);
+</script></body></html>
