@@ -1,22 +1,29 @@
 # YourMind Trade — Android
 
-Performance-first Android build of the offline Option Chain Signal Analyzer.
+Performance-first Android build of **NSE Algo Signal**.
+
+## Current app
+- 18 main screens: Dashboard, Market, Commodity, Signals, OI Lab, Watchlist, Search, Charts, Option Chain, News, Market Details, Angel API, NSE, NSE MCP, Data, Instruments, Settings, More.
+- Angel One SmartAPI native bridge with Client ID, MPIN, current TOTP, API key, profile/feed/live option-chain hooks.
+- NSE reachability check and NSE MCP connector.
+- CSV/XLS/XLSX/PDF/image file picker.
+- 8/13 EMA and requested analysis timeframes are retained for the analytics layer.
+- Real API data only; no fabricated market values and no automatic order placement.
 
 ## Stack
-- Kotlin 1.9.24 + Android Gradle Plugin 8.5.2
+- Android Gradle Plugin 8.5.2
 - Java 17
 - AndroidX WebKit WebViewAssetLoader
-- Offline HTML analyzer bundled inside the APK
-- Hardware acceleration enabled
-- LocalStorage retained for snapshots/settings/journal
-
-## Performance
-The app serves the bundled HTML through `https://appassets.androidplatform.net/assets/` rather than unrestricted `file://` loading. WebView file/content access is disabled, zoom and overscroll are disabled, and the Activity uses hardware acceleration.
+- OkHttp 4.12
+- Bundled offline-first HTML UI with native Android bridges
 
 ## Build
-`gradle assembleDebug`
+`gradle :app:assembleDebug`
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`
 
-## Design
-The launcher mark is a lightweight native vector inspired by the generated YourMind Trade visual: dark trading background, cyan/blue rising chart and clean finance styling.
+## Security
+Broker credentials are entered in the app and are not hard-coded into the project. Do not commit API keys, MPINs, TOTP secrets, JWTs or feed tokens.
+
+## Status
+The repository is the GitHub-native build target; Floot is not required for the Android build.
